@@ -1,11 +1,11 @@
 [package]
-name = "app"
+name = "overgrowth"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Grow vines on applications you haven't used in a while"
+authors = ["CharlieS1103"]
 license = ""
 repository = ""
-default-run = "app"
+default-run = "overgrowth"
 edition = "2021"
 rust-version = "1.57"
 
