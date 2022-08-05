@@ -16,27 +16,33 @@ fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
   } 
 }
 fn mac_find_app_files() -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-  let home_path = get_home_dir().unwrap();
+
+  // For now only look for .app files in the /Applications directory just for the sake of making development faster
+  let home_path = get_home_dir().unwrap().join("/Applications");
+  
   // Recursively call the loop_through_dir function and return all the .app files
-  let app_files = loop_through_dir(&home_path); 
+  let app_files = loop_through_dir(&home_path, &".app".to_string()); 
   Ok(app_files.unwrap())
 }
-// A function that takes a directory path as input, and returns a vector of all the .app files in that directory
-/*  TODO: Make this function not loop through the home directory and target directories which would typically house app files 
+
+
+/* This function is recursive and will return a vector of all the .app files in the directory and all subdirectories 
+ * dir_path: The path to the directory to be searched
+ * file_extension: The file extension to be searched for
+ */ 
+fn loop_through_dir(dir_path: &PathBuf, extension_type: &String) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+  /*  TODO: Make this function not loop through the home directory and target directories which would typically house app files 
  * "{homedir}/Applications"
  * "{homedir}/Downloads" 
  * "{homedir}/Documents" 
  * "{homedir}/Desktop")
 */
-fn loop_through_dir(dir_path: &PathBuf) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
   let mut app_files = vec![];
   // Check if we have permissions to the directory
-  
-  println!("{:?}", dir_path);
   for entry in fs::read_dir(dir_path)? {
     if let Ok(entry) = entry {
       if entry.metadata()?.permissions().readonly(){
-        println!("Permissions denied");
+        println!("Permissions denied: {}", entry.path().display());
         continue;
       }
       let path = entry.path();
@@ -48,7 +54,7 @@ fn loop_through_dir(dir_path: &PathBuf) -> Result<Vec<PathBuf>, Box<dyn std::err
       
       else if path.is_dir() {
         // If it is, recursively call the function on that directory and append the results to the vector
-        let sub_files = loop_through_dir(&path);
+        let sub_files = loop_through_dir(&path, &extension_type);
         if sub_files.is_ok() {
           app_files.append(&mut sub_files.unwrap());
         }
@@ -58,4 +64,3 @@ fn loop_through_dir(dir_path: &PathBuf) -> Result<Vec<PathBuf>, Box<dyn std::err
   }
   Ok(app_files)
 }
-
