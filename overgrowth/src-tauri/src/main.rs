@@ -105,7 +105,15 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
   }
 }
 
-
+fn restart_dock_mac(){
+    let echo_child_rm = Command::new("bash")
+                .args(["-c", "rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock"])
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("Failed to start echo process");
+            drop(echo_child_rm);
+            
+}
 
 
 
