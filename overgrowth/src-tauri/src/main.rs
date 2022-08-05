@@ -8,7 +8,7 @@ fn main() {
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
-
+// Return the home_dir of the current user.
 fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
   match home::home_dir() {
     Some(path) => Ok(path),
@@ -22,7 +22,8 @@ fn mac_find_app_files() -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
   let app_files = loop_through_dir(&home_path); 
   Ok(app_files.unwrap())
 }
-// Create a function that takes a directory path as input, and returns a vector of all the .app files in that directory
+// A function that takes a directory path as input, and returns a vector of all the .app files in that directory
+// TODO: Handle errors on permissions being denied
 fn loop_through_dir(dir_path: &PathBuf) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
   let mut app_files = vec![];
   for entry in fs::read_dir(dir_path).unwrap() {
@@ -32,6 +33,7 @@ fn loop_through_dir(dir_path: &PathBuf) -> Result<Vec<PathBuf>, Box<dyn std::err
         app_files.push(path);
       }
       //Check if the path is a directory
+      
       else if path.is_dir() {
         // If it is, recursively call the function on that directory
         let sub_files = loop_through_dir(&path);
