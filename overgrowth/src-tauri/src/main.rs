@@ -17,27 +17,42 @@ fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
 }
 fn mac_find_app_files() -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
   let home_path = get_home_dir().unwrap();
-  println!("{:?}", home_path);
   // Recursively call the loop_through_dir function and return all the .app files
   let app_files = loop_through_dir(&home_path); 
   Ok(app_files.unwrap())
 }
 // A function that takes a directory path as input, and returns a vector of all the .app files in that directory
-// TODO: Handle errors on permissions being denied
+/*  TODO: Make this function not loop through the home directory and target directories which would typically house app files 
+ * "{homedir}/Applications"
+ * "{homedir}/Downloads" 
+ * "{homedir}/Documents" 
+ * "{homedir}/Desktop")
+*/
 fn loop_through_dir(dir_path: &PathBuf) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
   let mut app_files = vec![];
-  for entry in fs::read_dir(dir_path).unwrap() {
+  // Check if we have permissions to the directory
+  
+  println!("{:?}", dir_path);
+  for entry in fs::read_dir(dir_path)? {
     if let Ok(entry) = entry {
+      if entry.metadata()?.permissions().readonly(){
+        println!("Permissions denied");
+        continue;
+      }
       let path = entry.path();
       if path.to_str().unwrap().ends_with(".app") {
+        println!("Pushing application: {:?}", path);
         app_files.push(path);
       }
       //Check if the path is a directory
       
       else if path.is_dir() {
-        // If it is, recursively call the function on that directory
+        // If it is, recursively call the function on that directory and append the results to the vector
         let sub_files = loop_through_dir(&path);
-        app_files.extend(sub_files.unwrap());
+        if sub_files.is_ok() {
+          app_files.append(&mut sub_files.unwrap());
+        }
+        
       }
     }
   }
