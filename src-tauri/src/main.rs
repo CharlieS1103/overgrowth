@@ -211,6 +211,7 @@ fn parse_config() -> Config {
   let config_path = home_path.join(".overgrowth/config.toml");
   let config_toml = fs::read_to_string(config_path).unwrap();
   let config_toml : Config = toml::from_str(&config_toml).unwrap();
+  return config_toml
 }
 
 #[derive(Deserialize)]
