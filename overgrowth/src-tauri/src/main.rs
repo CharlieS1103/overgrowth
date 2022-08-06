@@ -6,7 +6,8 @@ Next, we will iterate thorugh the app vector, and iterate through the app's icns
 And finally we will replace the previous file with the modified version
 
 Once that initial integration is finished, we will need to add the access time handling
-We also need to store the original icon file somewhere in the users device, so we should sort that out as well
+We also need to store the original icon file somewhere in the users device, so we should sort that out as well (So we can later restore the icon to the original state if it has been accessed more recently or if the user wants to revert to the original icon)
+*/
 
 
 NOTE: For the purpose of development, i heavily recommend just making a directory that has a singular .app file in it, and then just using that so you don't accidentally modify all your apps to permanently have a weird overlay.
@@ -50,6 +51,21 @@ fn mac_find_app_files(){
       println!("{:?}", mac_apps);
   }
   // Next step is to iterate through the mac_apps vector and iterate through the app's icns vector, and use a function to modify the icns file
+}
+fn win_find_lnk_files(){
+  /*  For now only look for .lnk files in the /Desktop directory just for the sake of making development faster
+   In the future also scan the startup folder 
+   */
+  let home_path = get_home_dir().unwrap().join("/Desktop");
+  // "/User/{username}/C:\Users\<USERNAME>\Desktop"
+  let app_files = loop_through_dir(&home_path, &".lnk".to_string()).unwrap(); 
+   // Iterate through the vector of lnk files and get the WinApplication struct for each lnk
+   let mut win_apps: Vec<WinApplications> = Vec::new();
+    for app_file in app_files {
+      let app = get_app_struct(app_file).unwrap();
+      win_apps.push(app);
+      println!("{:?}", win_apps);
+  }
 }
 
 
