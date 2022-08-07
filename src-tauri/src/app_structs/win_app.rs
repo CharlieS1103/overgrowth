@@ -1,14 +1,7 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::SystemTime};
 #[derive(Debug)]
 pub struct WinApplication{
   pub path: PathBuf,
   pub icos: Vec<PathBuf>,
-}
-impl WinApplication{
-  fn new(path: PathBuf, icns : Vec<PathBuf>) -> WinApplication{
-    WinApplication{
-      path,
-      icos: vec![],
-    }
-  }
+  pub access_time: SystemTime,
 }

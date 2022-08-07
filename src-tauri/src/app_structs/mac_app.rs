@@ -6,12 +6,3 @@ pub struct MacApplication{
   pub icns: Vec<PathBuf>,
   pub access_time: SystemTime,
 }
-impl MacApplication{
-  fn new(path: PathBuf, icns : Vec<PathBuf>, access_time : SystemTime) -> MacApplication{
-    MacApplication{
-      path,
-      icns: vec![],
-      access_time,
-    }
-  }
-}

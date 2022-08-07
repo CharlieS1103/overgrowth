@@ -12,15 +12,12 @@ NOTE: For the purpose of development, i heavily recommend just making a director
 */
 
 mod app_structs;
-use app_structs::mac_app::MacApplication;
-use std::fs;
-use std::path::PathBuf;
-use std::process::Stdio;
-use std::process::Command;
-use std::fs::File;
-use std::io::Write;
-use serde::{Serialize, Deserialize};
+use std::{path::PathBuf, time::SystemTime, fs::File, io::Write, process::Stdio, process::Command, error::Error, fs};
+use app_structs::{mac_app::MacApplication, win_app::WinApplication};
+use serde::{Deserialize};
 fn main() {
+  generate_config();
+  mac_find_app_files();
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -101,10 +98,10 @@ fn mac_find_app_files(){
   *  app_path: The path to the application
   */
 fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::error::Error>> {
-   let last_access_time = fs::metadata(&path)?.accessed().unwrap();
-  let app_icns = loop_through_dir(&path, &".icns".to_string(), true);
+   let last_access_time: SystemTime = fs::metadata(&path)?.accessed().unwrap();
+  let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = loop_through_dir(&path, &".icns".to_string(), true);
   if app_icns.is_ok() {
-    let app_icns = app_icns.unwrap();
+    let app_icns: Vec<PathBuf> = app_icns.unwrap();
    
     Ok(MacApplication{path : path, icns : app_icns, access_time : last_access_time})
   }
@@ -136,9 +133,8 @@ fn restart_dock_mac(){
 // Windows integrations: 
 
 
-/* 
 // Windows specific function to find all the .lnk files
-fn win_find_lnk_files(){
+fn _win_find_lnk_files(){
   /*  For now only look for .lnk files in the /Desktop directory just for the sake of making development faster
    In the future also scan the startup folder 
    */
@@ -146,26 +142,26 @@ fn win_find_lnk_files(){
   // "/User/{username}/C:\Users\<USERNAME>\Desktop"
   let app_files = loop_through_dir(&home_path, &".lnk".to_string(), false).unwrap(); 
    // Iterate through the vector of lnk files and get the WinApplication struct for each lnk
-   let mut win_apps: Vec<WinApplications> = Vec::new();
+   let mut win_apps: Vec<WinApplication> = Vec::new();
     for app_file in app_files {
-      let app = get_win_app_struct(app_file).unwrap();
+      let app = _get_win_app_struct(app_file).unwrap();
       win_apps.push(app);
       println!("{:?}", win_apps);
   }
 }
 
-fn get_win_app_struct(path: PathBuf) -> Result<WinApplications, Box<dyn std::error::Error>> {
-  let app_ico = loop_through_dir(&path, &".ico".to_string(), false);
+fn _get_win_app_struct(path: PathBuf) -> Result<WinApplication, Box<dyn std::error::Error>> {
+  let app_ico: Result<Vec<PathBuf>, Box<dyn Error>> = loop_through_dir(&path, &".ico".to_string(), false);
+  let last_access_time: SystemTime = fs::metadata(&path)?.accessed().unwrap();
   if app_ico.is_ok() {
     let app_ico = app_ico.unwrap();
-    let last_access_time = fs::metadata(path)?.last_access_time();
-    Ok(WinApplications{path : path, lnk : app_lnk, access_time : last_access_time})
+    Ok(WinApplication{path : path, icos: app_ico, access_time : last_access_time})
   }
   else {
     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app lnk")))
   }
 }
-*/
+
 
 
 
@@ -214,8 +210,7 @@ fn parse_config() -> Config {
   return config_toml
 }
 
-#[derive(Deserialize)]
-struct Config{
+#[derive(Deserialize)]struct Config{
   icon_dir: String,
   stage_one_days: i64,
   stage_two_days: i64,
