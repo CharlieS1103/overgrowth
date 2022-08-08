@@ -116,7 +116,7 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
         fs::create_dir_all(full_icon_path)?;
       }
       // Check to see if the file already exists in the configs icon dir
-      if !&icn_path.join(icn.file_name().unwrap()).exists() {
+      if !home_dir.join(icn_path.join(icn.file_name().unwrap())).exists() {
         // If it doesn't exist, copy the file to the configs icon dir
         fs::copy(home_dir.join(icn), home_dir.join(icn_path.join(icn.file_name().unwrap())))?;
         
