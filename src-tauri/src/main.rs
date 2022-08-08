@@ -12,11 +12,12 @@ NOTE: For the purpose of development, i heavily recommend just making a director
 */
 
 mod app_structs;
-use std::{path::PathBuf, time::SystemTime, fs::File, io::Write, process::Stdio, process::Command, error::Error, fs};
+mod config;
+use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs};
 use app_structs::{mac_app::MacApplication, win_app::WinApplication};
-use serde::{Deserialize};
+use config::{parse_config, generate_config};
 fn main() {
-  generate_config();
+  generate_config(&get_home_dir().unwrap());
   mac_find_app_files();
   tauri::Builder::default()
     .run(tauri::generate_context!())
@@ -89,9 +90,38 @@ fn mac_find_app_files(){
       mac_apps.push(app);
       println!("{:?}", mac_apps);
   }
-  // Next step is to iterate through the mac_apps vector and iterate through the app's icns vector, and use a function to modify the icns file
+  if mac_store_icns_files(&mac_apps).is_ok() {
+    println!("Successfully stored icns files");
+  }
+  else {
+    println!("Could not store icns files");
+  }
+  
 }
-
+// Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
+fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
+  let config = parse_config(&get_home_dir().unwrap());
+  for app in mac_apps {
+    let icns = &app.icns;
+    // TODO: Should probably make icon_dir a PathBuf instead of a String from the start, but for now this works.
+    for icn in icns {
+      let icn_path = config.icon_dir.clone();
+      // Convert icn_path into a PathBuf
+      let icn_path = PathBuf::from(icn_path);
+      // Check to see if the file already exists in the configs icon dir
+      if !icn_path.join(icn.file_name().unwrap()).exists() {
+        // If it doesn't exist, copy the file to the configs icon dir
+        fs::copy(icn, icn_path.join(icn.file_name().unwrap()))?;
+        
+      }
+      else{
+        // If it does exist already, do nothing
+        println!("{} already exists", icn.display());
+      }
+    }
+  }
+  Ok(())
+}
 
 /*  This function will return a MacApplication object which contains the name of the application, the path to the application, and the path to all the icons for the application
   * Parameters:
@@ -129,7 +159,7 @@ fn restart_dock_mac(){
 
 
 
-
+/* 
 // Windows integrations: 
 
 
@@ -162,63 +192,8 @@ fn _get_win_app_struct(path: PathBuf) -> Result<WinApplication, Box<dyn std::err
   }
 }
 
+*/
 
-
-
-// Config File generation and parsing functions:
-
-
-
-fn generate_config(){
-  // Create a overgrowth directory in the home directory if it doesn't exist
-  let home_path = get_home_dir().unwrap();
-  let overgrowth_path = home_path.join(".overgrowth");
-  if !overgrowth_path.exists() {
-    fs::create_dir_all(overgrowth_path).unwrap();
-  }
-  // Check if the config file exists, if it does exit this function
-  let config_path = home_path.join(".overgrowth/config.toml");
-  if config_path.exists() {
-    println!("Config file already exists");
-    return;
-  }
-  // Create a config file with the default values
-  let mut config_file = File::create(config_path).unwrap();
-  let config_toml = 
-  r#"
-  # The path to the directory where the icons will be stored (root is home dir of user)
-  icon_dir = ".overgrowth/icons"
-  # Vine stage one:
-  stage_one_days = 7
-  # Vine stage two:
-  stage_two_days = 30
-  # Vine stage three:
-  stage_three_days = 90
-  # Vine stage four:
-  stage_four_days = 180
-  # Vine stage five:
-  stage_five_days = 365
-"#;
-  config_file.write_all(config_toml.as_bytes()).unwrap();
-}
-// Parse the config file and return a Config object
-fn parse_config() -> Config {
-  let home_path = get_home_dir().unwrap();
-  let config_path = home_path.join(".overgrowth/config.toml");
-  let config_toml = fs::read_to_string(config_path).unwrap();
-  let config_toml : Config = toml::from_str(&config_toml).unwrap();
-  return config_toml
-}
-
-#[derive(Deserialize)]struct Config{
-  icon_dir: String,
-  stage_one_days: i64,
-  stage_two_days: i64,
-  stage_three_days: i64,
-  stage_four_days: i64,
-  stage_five_days: i64,
-  
-}
 
 
 
