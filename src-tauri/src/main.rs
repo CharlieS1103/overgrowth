@@ -88,30 +88,37 @@ fn mac_find_app_files(){
     for app_file in app_files {
       let app = get_mac_app_struct(app_file).unwrap();
       mac_apps.push(app);
-      println!("{:?}", mac_apps);
   }
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
   }
   else {
-    println!("Could not store icns files");
+    println!("{:?}", mac_store_icns_files(&mac_apps));
   }
   
 }
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
 fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
   let config = parse_config(&get_home_dir().unwrap());
+  let home_dir = get_home_dir().unwrap();
   for app in mac_apps {
     let icns = &app.icns;
     // TODO: Should probably make icon_dir a PathBuf instead of a String from the start, but for now this works.
     for icn in icns {
-      let icn_path = config.icon_dir.clone();
+      // Create an empty icon dir if it doesn't exist
+      
+      let icn_path = &config.icon_dir;
+      
       // Convert icn_path into a PathBuf
       let icn_path = PathBuf::from(icn_path);
+      let full_icon_path = home_dir.join(&icn_path);
+       if !full_icon_path.exists() {
+        fs::create_dir_all(full_icon_path)?;
+      }
       // Check to see if the file already exists in the configs icon dir
-      if !icn_path.join(icn.file_name().unwrap()).exists() {
+      if !&icn_path.join(icn.file_name().unwrap()).exists() {
         // If it doesn't exist, copy the file to the configs icon dir
-        fs::copy(icn, icn_path.join(icn.file_name().unwrap()))?;
+        fs::copy(home_dir.join(icn), home_dir.join(icn_path.join(icn.file_name().unwrap())))?;
         
       }
       else{
