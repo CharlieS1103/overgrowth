@@ -47,7 +47,7 @@ pub fn parse_config(home_path: &PathBuf) -> Config {
   let config_toml = std::fs::read_to_string(config_path).unwrap();
   let config_toml : Config = toml::from_str(&config_toml).unwrap();
 
-  return config_toml
+  config_toml
 }
 
 #[derive(Deserialize)] pub struct Config{

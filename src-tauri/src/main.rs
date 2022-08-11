@@ -1,28 +1,33 @@
-/*
-How it works so far:
-Upon running, it will execute the mac_find_app_files function, which will find all the files ending with .app in the Applications folder and store their paths in a vector.
-We will then iterate through the vector and use the get_app_icns function to get the icns file for each app and store each app as a MacApplication struct in a vector.
-Next, we will iterate thorugh the app vector, and iterate through the app's icns vector, and use a function to modify the icns file
-And finally we will replace the previous file with the modified version
-
-Once that initial integration is finished, we will need to add the access time handling
-We also need to store the original icon file somewhere in the users device, so we should sort that out as well (So we can later restore the icon to the original state if it has been accessed more recently or if the user wants to revert to the original icon)
-
-NOTE: For the purpose of development, i heavily recommend just making a directory that has a singular .app file in it, and then just using that so you don't accidentally modify all your apps to permanently have a weird overlay.
-*/
-
 mod app_structs;
 mod config;
-use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs};
-use app_structs::{mac_app::MacApplication, win_app::WinApplication};
+use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufWriter, BufReader}};
+use app_structs::{mac_app::MacApplication};
 use config::{parse_config, generate_config};
+use icns::{IconFamily, IconType};
+
+
+
+
 fn main() {
-  generate_config(&get_home_dir().unwrap());
-  mac_find_app_files();
+
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
+
+// Make a function to convert a .icns file to a .png file
+fn convert_icns_to_png(icns_path: &PathBuf) -> PathBuf {
+  let png_path = icns_path.with_extension("png");
+  let file = BufReader::new(File::open(icns_path).unwrap());
+    let  icon_family = IconFamily::read(file).unwrap();
+
+    // Extract an icon from the family and save it as a PNG.
+    let image = icon_family.get_icon_with_type(IconType::RGB24_16x16).unwrap();
+    let file = BufWriter::new(File::create(&png_path).unwrap());
+    image.write_png(file).unwrap();
+  png_path
+}
+
 // Return the home_dir of the current user.
 fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
   match home::home_dir() {
@@ -71,8 +76,8 @@ fn loop_through_dir(dir_path: &PathBuf, extension_type: &String, check_sub_dir: 
 
 // Mac Integrations: 
 
-//Mac OS X specific function to find all the .app files
-fn mac_find_app_files(){
+// Handle the MacOS logic
+fn mac_logic(){
   // For now only look for .app files in the /Applications directory just for the sake of making development faster
 /*  TODO: Make this function not loop through the home directory and target directories which would typically house app files 
  * "{homedir}/Applications"
@@ -147,13 +152,23 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
   }
 }
 
-
-
+// TODO: Commission an artist to make the 16x16 vine icons with transparency 
+/* Overlays one image ontop of another image (NEEDS TO BE CONVERTED TO PNG BEFOREHAND)
+* Parameters:
+*  base_image: The image to be overlaid on top of another image
+*  overlay_image: The image to be overlayed on top of the base image
+* Returns: 
+*  The image with the overlayed image on top of the base image
+*/
+fn add_overlay(mut base_image : image::DynamicImage, overlay_image : &image::DynamicImage) -> image::DynamicImage {
+  image::imageops::overlay(&mut base_image, overlay_image,0 ,0 );
+  return base_image;
+}
 
 /*
 Essentially just restart the mac dock and clear the cache of the dock icons to make sure the icons are up to date
 */
-fn restart_dock_mac(){
+fn _restart_dock_mac(){
     let echo_child_rm = Command::new("bash")
                 .args(["-c", "rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock"])
                 .stdout(Stdio::piped())
