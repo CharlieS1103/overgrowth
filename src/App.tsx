@@ -1,12 +1,14 @@
 import React from 'react';
 import logo from './logo.svg';
-import './App.css';
+import './assets/main.css';
 import Index from './pages';
 
-function App() {
+export default function App() {
   return (
-    <Index />
-  );
+    <h1 className="text-3xl font-bold underline">
+      Hello world!
+    </h1>
+  )
 }
 
-export default App;
+
