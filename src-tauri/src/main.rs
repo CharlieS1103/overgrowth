@@ -33,8 +33,11 @@ fn convert_icns_to_png(icns_path: &PathBuf){
       };
       // Create a direcory based on the icn file name 
       let png_dir = icns_path.with_extension("");
-      println!("{:?}", png_dir);
-      fs::create_dir_all(&png_dir).unwrap();
+      // check if the directory exists, if not create it
+      if !png_dir.exists() {
+        fs::create_dir_all(&png_dir).unwrap();
+      }
+      
       let icon_path = &png_dir.join(format!("{:?}.png", icon));
       let file = File::create(&icon_path).unwrap();
       image.write_png(file).unwrap();
