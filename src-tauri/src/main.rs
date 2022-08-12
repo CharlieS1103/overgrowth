@@ -3,29 +3,43 @@ mod config;
 use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufWriter, BufReader}};
 use app_structs::{mac_app::MacApplication};
 use config::{parse_config, generate_config};
-use icns::{IconFamily, IconType};
+use icns::{IconFamily};
 
 
 
 
 fn main() {
-
+  let icn_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/test.icns"));
+  let overlay_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/overlay.png"));
+  convert_icns_to_png(&icn_path);
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
 
 // Make a function to convert a .icns file to a .png file
-fn convert_icns_to_png(icns_path: &PathBuf) -> PathBuf {
-  let png_path = icns_path.with_extension("png");
+// TODO: Cleanup this entire function
+fn convert_icns_to_png(icns_path: &PathBuf){
   let file = BufReader::new(File::open(icns_path).unwrap());
     let  icon_family = IconFamily::read(file).unwrap();
-
-    // Extract an icon from the family and save it as a PNG.
-    let image = icon_family.get_icon_with_type(IconType::RGB24_16x16).unwrap();
-    let file = BufWriter::new(File::create(&png_path).unwrap());
-    image.write_png(file).unwrap();
-  png_path
+    let icon_type = icon_family.available_icons(); 
+   // Loop thorugh all the available icon types and convert them to png files
+    for icon in icon_type {
+      // TODO: We need to figure out how to handle Jpeg 2000 icons 
+      let image =  
+      match icon_family.get_icon_with_type(icon){
+        Ok(_) => icon_family.get_icon_with_type(icon).unwrap(),
+        Err(_) => continue,
+      };
+      // Create a direcory based on the icn file name 
+      let png_dir = icns_path.with_extension("");
+      println!("{:?}", png_dir);
+      fs::create_dir_all(&png_dir).unwrap();
+      let icon_path = &png_dir.join(format!("{:?}.png", icon));
+      let file = File::create(&icon_path).unwrap();
+      image.write_png(file).unwrap();
+      
+    }
 }
 
 // Return the home_dir of the current user.
