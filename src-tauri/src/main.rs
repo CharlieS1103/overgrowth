@@ -9,9 +9,9 @@ use icns::{IconFamily};
 
 
 fn main() {
-  let icn_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/test.icns"));
-  let overlay_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/overlay.png"));
-  convert_icns_to_png(&icn_path);
+//  let icn_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/test.icns"));
+//  let overlay_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/overlay.png"));
+//  convert_icns_to_png(&icn_path);
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
