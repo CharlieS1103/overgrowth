@@ -9,9 +9,6 @@ use icns::{IconFamily};
 
 
 fn main() {
-//  let icn_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/test.icns"));
-//  let overlay_path = PathBuf::from(get_home_dir().unwrap().join(".overgrowth/test/overlay.png"));
-//  convert_icns_to_png(&icn_path);
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -118,7 +115,38 @@ fn mac_logic(){
     println!("{:?}", mac_store_icns_files(&mac_apps));
   }
   
+  
 }
+
+// Convert the access time to the correct Vine State
+fn get_vine_state(mac_app : &MacApplication) -> String {
+  let config = parse_config(&get_home_dir().unwrap());
+  let mut vine_state: String;
+  let app_access_time = mac_app.access_time;
+  let current_time = SystemTime::now();
+  // Get the number of days between the app access time and the current time
+  let days_between = current_time.duration_since(app_access_time).unwrap().as_secs() / 86400;
+  if days_between > config.stage_one_days{
+    vine_state = "1".to_string();
+  }
+  else if days_between > config.stage_two_days{
+    vine_state = "2".to_string();
+  }
+  else if days_between > config.stage_three_days{
+    vine_state = "3".to_string();
+  }
+  else if days_between > config.stage_four_days{
+    vine_state = "4".to_string();
+  }
+  else if days_between > config.stage_five_days{
+    vine_state = "5".to_string();
+  }
+  else {
+    vine_state = "0".to_string();
+  }
+  return vine_state;
+}
+
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
 fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
   let config = parse_config(&get_home_dir().unwrap());

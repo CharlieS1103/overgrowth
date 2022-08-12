@@ -52,10 +52,10 @@ pub fn parse_config(home_path: &PathBuf) -> Config {
 
 #[derive(Deserialize)] pub struct Config{
   pub icon_dir: String,
-  pub stage_one_days: i64,
-  pub stage_two_days: i64,
-  pub stage_three_days: i64,
-  pub stage_four_days: i64,
-  pub stage_five_days: i64,
+  pub stage_one_days: u64,
+  pub stage_two_days: u64,
+  pub stage_three_days: u64,
+  pub stage_four_days: u64,
+  pub stage_five_days: u64,
   
 }
