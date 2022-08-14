@@ -24,7 +24,7 @@ pub fn generate_config(home_path: &PathBuf){
   let mut config_file = File::create(config_path).unwrap();
   let config_toml = 
   r#"
-  # The path to the directory where the icons will be stored (root is home dir of user)
+  # The path to the directory where the icons will be stored (root is home dir of user, note that changing this will not change the location of the config file, only the location of the icons, if the directory does not exist it will be created)
   icon_dir = ".overgrowth/icons"
   # Vine stage one:
   stage_one_days = 7

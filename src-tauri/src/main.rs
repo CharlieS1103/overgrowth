@@ -1,14 +1,15 @@
 mod app_structs;
 mod config;
-use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufWriter, BufReader}};
+use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader}};
 use app_structs::{mac_app::MacApplication};
-use config::{parse_config, generate_config};
+use config::{parse_config};
 use icns::{IconFamily};
 
 
 
 
 fn main() {
+  mac_logic();
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -56,7 +57,7 @@ fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
  * file_extension: The file extension to be searched for
  * check_sub_dir: Whether or not to check subdirectories
  */ 
-fn loop_through_dir(dir_path: &PathBuf, extension_type: &String, check_sub_dir: bool) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+fn loop_through_dir(dir_path: &PathBuf, extension_type: &String, check_sub_dir: bool, check_app_files:bool, loop_inc: i64) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
   let mut found_files = vec![];
   for entry in fs::read_dir(dir_path)? {
     if let Ok(entry) = entry {
@@ -70,13 +71,18 @@ fn loop_through_dir(dir_path: &PathBuf, extension_type: &String, check_sub_dir: 
         continue; 
       }
       let path = entry.path();
+      let mut app_check = true;
+      if !check_app_files && path.to_str().unwrap().ends_with(".app") && loop_inc > 0 {
+        app_check = false;
+      }
       if path.to_str().unwrap().ends_with(extension_type) {
           found_files.push(path);
 
       }
-      else if path.is_dir() && check_sub_dir {
+     
+      else if path.is_dir() && check_sub_dir && app_check{
         // If it is a directory,  recursively call the function on that directory and append the results to the vector
-        let sub_files = loop_through_dir(&path, &extension_type, check_sub_dir);
+        let sub_files = loop_through_dir(&path, &extension_type, check_sub_dir, check_app_files, loop_inc + 1);
         if sub_files.is_ok() {
           found_files.append(&mut sub_files.unwrap());
         }
@@ -101,7 +107,7 @@ fn mac_logic(){
 */
   let home_path = get_home_dir().unwrap().join("/Applications");
   // "/User/{username}/Applications"
-  let app_files = loop_through_dir(&home_path, &".app".to_string(), false).unwrap(); 
+  let app_files = loop_through_dir(&home_path, &".app".to_string(), false, false, 0).unwrap(); 
    // Iterate through the vector of app files and get the MacApplication struct for each app
    let mut mac_apps: Vec<MacApplication> = Vec::new();
     for app_file in app_files {
@@ -114,6 +120,7 @@ fn mac_logic(){
   else {
     println!("{:?}", mac_store_icns_files(&mac_apps));
   }
+  // Loop through the vector of MacApplication structs and convert the .icns files to .png files
   
   
 }
@@ -121,7 +128,7 @@ fn mac_logic(){
 // Convert the access time to the correct Vine State
 fn get_vine_state(mac_app : &MacApplication) -> String {
   let config = parse_config(&get_home_dir().unwrap());
-  let mut vine_state: String;
+  let vine_state: String;
   let app_access_time = mac_app.access_time;
   let current_time = SystemTime::now();
   // Get the number of days between the app access time and the current time
@@ -154,26 +161,31 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
   for app in mac_apps {
     let icns = &app.icns;
     // TODO: Should probably make icon_dir a PathBuf instead of a String from the start, but for now this works.
-    for icn in icns {
-      // Create an empty icon dir if it doesn't exist
-      
-      let icn_path = &config.icon_dir;
-      
+    let icn_path = &config.icon_dir;
+    // icn_path (default): ./overgrowth/icons
+
       // Convert icn_path into a PathBuf
-      let icn_path = PathBuf::from(icn_path);
-      let full_icon_path = home_dir.join(&icn_path);
-       if !full_icon_path.exists() {
-        fs::create_dir_all(full_icon_path)?;
+    let icn_path = PathBuf::from(icn_path);
+
+    let full_icon_path = home_dir.join(&icn_path);
+    // full_icon_path (default): /Users/{username}/.overgrowth/icons
+       if !&full_icon_path.exists() {
+        fs::create_dir_all(&full_icon_path)?;
       }
+    for icn in icns {
       // Check to see if the file already exists in the configs icon dir
-      if !home_dir.join(icn_path.join(icn.file_name().unwrap())).exists() {
-        // If it doesn't exist, copy the file to the configs icon dir
-        fs::copy(home_dir.join(icn), home_dir.join(icn_path.join(icn.file_name().unwrap())))?;
-        
+      let app_icon_dir = &full_icon_path.join(app.path.with_extension("").file_name().unwrap());
+      // app_icon_dir (default): Users/{username}/.overgrowth/icons/{app name}/
+      
+      // Check if the app icon dir exists and if it doesn't create it
+      if !app_icon_dir.exists() {
+        fs::create_dir_all(app_icon_dir)?;
       }
-      else{
-        // If it does exist already, do nothing
-        println!("{} already exists", icn.display());
+      if !app_icon_dir.join(icn.file_name().unwrap()).exists() {
+        // If it doesn't exist, copy the file to the configs icon dir
+        // Check if there is another .app file in the icn path, if so, create a new directory for the app
+        fs::copy(home_dir.join(icn), app_icon_dir.join(icn.file_name().unwrap()))?;
+        
       }
     }
   }
@@ -186,7 +198,7 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
   */
 fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::error::Error>> {
    let last_access_time: SystemTime = fs::metadata(&path)?.accessed().unwrap();
-  let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = loop_through_dir(&path, &".icns".to_string(), true);
+  let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = loop_through_dir(&path, &".icns".to_string(), true, false,0);
   if app_icns.is_ok() {
     let app_icns: Vec<PathBuf> = app_icns.unwrap();
    
