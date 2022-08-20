@@ -1,6 +1,6 @@
 # Overgrowth
 
-A desktop application to grow vines on unnused applications over time.
+***A desktop application to grow vines on unnused applications over time.***
 
 ## How it works:
 * Tracks the amount of time where an app on your local computer is idle/not used.
@@ -9,3 +9,6 @@ A desktop application to grow vines on unnused applications over time.
 
 ## Installation:
 Coming Soon.
+```Javascript
+console.log("Hi");
+```
