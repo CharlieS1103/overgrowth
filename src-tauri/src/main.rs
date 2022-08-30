@@ -1,48 +1,24 @@
-mod app_structs;
+mod structs;
 mod config;
 mod parser;
-use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader}};
-use app_structs::{mac_app::MacApplication};
-use config::{parse_config};
+use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File, OpenOptions}, io::{BufReader, Read, Write}};
+use structs::{icon_state::IconState, mac_app::MacApplication};
+use config::{parse_config, generate_config};
 use icns::{IconFamily};
 use parser::app_utlity_fns::{get_first_letter};
 
 
 
+
 fn main() {
-  mac_logic();
+  generate_config(&get_home_dir().unwrap());
+  // Running this code will generate an infinitely large file on mac for now: mac_logic();
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
 
-// Make a function to convert a .icns file to a .png file
-// TODO: Cleanup this entire function
-fn convert_icns_to_png(icns_path: &PathBuf){
-  let file = BufReader::new(File::open(icns_path).unwrap());
-    let  icon_family = IconFamily::read(file).unwrap();
-    let icon_type = icon_family.available_icons(); 
-   // Loop thorugh all the available icon types and convert them to png files
-    for icon in icon_type {
-      // TODO: We need to figure out how to handle Jpeg 2000 icons 
-      let image =  
-      match icon_family.get_icon_with_type(icon){
-        Ok(_) => icon_family.get_icon_with_type(icon).unwrap(),
-        Err(_) => continue,
-      };
-      // Create a direcory based on the icn file name 
-      let png_dir = icns_path.with_extension("");
-      // check if the directory exists, if not create it
-      if !png_dir.exists() {
-        fs::create_dir_all(&png_dir).unwrap();
-      }
-      
-      let icon_path = &png_dir.join(format!("{:?}.png", icon));
-      let file = File::create(&icon_path).unwrap();
-      image.write_png(file).unwrap();
-      
-    }
-}
+
 
 // Return the home_dir of the current user.
 fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
@@ -100,12 +76,6 @@ fn loop_through_dir(dir_path: &PathBuf, extension_type: &String, check_sub_dir: 
 // Handle the MacOS logic
 fn mac_logic(){
   // For now only look for .app files in the /Applications directory just for the sake of making development faster
-/*  TODO: Make this function not loop through the home directory and target directories which would typically house app files 
- * "{homedir}/Applications"
- * "{homedir}/Downloads" 
- * "{homedir}/Documents" 
- * "{homedir}/Desktop")
-*/
   let home_path = get_home_dir().unwrap().join("/Applications");
   // "/User/{username}/Applications"
   let app_files = loop_through_dir(&home_path, &".app".to_string(), false, false, 0).unwrap(); 
@@ -121,12 +91,64 @@ fn mac_logic(){
   else {
     println!("{:?}", mac_store_icns_files(&mac_apps));
   }
-  
-  
-}
 
+  // Loop through the vector of MacApplication structs and get the vine state of each app, then store the state in the config file
+    // Create a new config file to store the vine states of the apps
+    let icon_file = get_home_dir().unwrap().join(".overgrowth/icon_states.toml");
+    println!("{:?}", icon_file);
+    // Check if the file exists, if not create it
+    if !&icon_file.exists() {
+     fs::File::create(&icon_file).unwrap();
+     // Add "[\n] to the file to make it a valid toml file"
+      let mut file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .read(true)
+        .open(&icon_file)
+        .unwrap();
+      let mut contents = String::new();
+      file.read_to_string(&mut contents).unwrap();
+      contents.push_str("icon_states=[\n]");
+      file.write_all(contents.as_bytes()).unwrap();
+    }
+      // read the vine_states as a toml file and check if the app is already in the file and if it is, edit the state if it is not, add it
+      // TODO: Ensure the toml file is written in the correct format to parse it back in
+
+
+      let mut toml_file : IconState = toml::from_str(&read_file_as_string(&vine_file).unwrap()).unwrap();
+      
+      for app in mac_apps {
+        let vine_state = &mut get_vine_state(&app);
+        let path_as_string = app.path.as_os_str().to_str().unwrap();
+        if toml_file.contains_key(&path_as_string) {
+          let app_state =  vine_state;
+          // Replace the old state with the new state
+          toml_file.replace(path_as_string.to_string(), &app_state.to_string());
+          println!("Replacing {} with {}", path_as_string, app_state.to_string());
+        }
+        else {
+          toml_file.insert((&path_as_string).to_string(), vine_state.clone());
+          println!("Inserting {} with {}", path_as_string, vine_state.to_string());
+          
+
+        }
+      }
+      for (key, value) in toml_file.icon_states {
+        let mut file = OpenOptions::new()
+          .write(true)
+          .read(true)
+          .append(true)
+          .open(&vine_file)
+          .unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap();
+        contents.push_str(&format!("{} = {}\n", key, value));
+        file.write_all(contents.as_bytes()).unwrap();
+      }
+}
 // Convert the access time to the correct Vine State
 fn get_vine_state(mac_app : &MacApplication) -> String {
+
   // Base on the app first letter, get the correct Vine State
   let first_letter = get_first_letter(&mac_app);
   // If the first letter is A, use vine_state 0, if it is B, use vine_state 1, if it is C, use vine_state 2, if it is D, use vine_state 3, if it is E, use vine_State 4, if it is F, use vine_state 5, if it is G, use vine_state 0, and so on
@@ -217,6 +239,13 @@ fn get_vine_state(mac_app : &MacApplication) -> String {
   vine_state.to_string()
 }
 
+fn read_file_as_string(file_path: &PathBuf) -> Result<String, Box<dyn std::error::Error>> {
+  let mut file = fs::File::open(file_path)?;
+  let mut contents = String::new();
+  file.read_to_string(&mut contents)?;
+  Ok(contents)
+}
+
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
 fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
   let config = parse_config(&get_home_dir().unwrap());
@@ -272,6 +301,7 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app icns")))
   }
 }
+
 
 
 fn add_overlay(mut base_image : image::DynamicImage, overlay_image : &image::DynamicImage) -> image::DynamicImage {
