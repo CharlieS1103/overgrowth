@@ -26,16 +26,6 @@ pub fn generate_config(home_path: &PathBuf){
   r#"
   # The path to the directory where the icons will be stored (root is home dir of user, note that changing this will not change the location of the config file, only the location of the icons, if the directory does not exist it will be created)
   icon_dir = ".overgrowth/icons"
-  # Vine stage one:
-  stage_one_days = 7
-  # Vine stage two:
-  stage_two_days = 30
-  # Vine stage three:
-  stage_three_days = 90
-  # Vine stage four:
-  stage_four_days = 180
-  # Vine stage five:
-  stage_five_days = 365
 "#;
   config_file.write_all(config_toml.as_bytes()).unwrap();
 }
@@ -52,10 +42,4 @@ pub fn parse_config(home_path: &PathBuf) -> Config {
 
 #[derive(Deserialize)] pub struct Config{
   pub icon_dir: String,
-  pub stage_one_days: u64,
-  pub stage_two_days: u64,
-  pub stage_three_days: u64,
-  pub stage_four_days: u64,
-  pub stage_five_days: u64,
-  
 }
