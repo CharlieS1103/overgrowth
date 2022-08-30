@@ -5,4 +5,5 @@ pub struct MacApplication{
   pub path: PathBuf,
   pub icns: Vec<PathBuf>,
   pub access_time: SystemTime,
+  pub name : String,
 }

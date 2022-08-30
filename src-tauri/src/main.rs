@@ -1,10 +1,11 @@
 mod app_structs;
 mod config;
+mod parser;
 use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader}};
 use app_structs::{mac_app::MacApplication};
 use config::{parse_config};
 use icns::{IconFamily};
-
+use parser::app_utlity_fns::{get_first_letter};
 
 
 
@@ -120,38 +121,100 @@ fn mac_logic(){
   else {
     println!("{:?}", mac_store_icns_files(&mac_apps));
   }
-  // Loop through the vector of MacApplication structs and convert the .icns files to .png files
   
   
 }
 
 // Convert the access time to the correct Vine State
 fn get_vine_state(mac_app : &MacApplication) -> String {
-  let config = parse_config(&get_home_dir().unwrap());
-  let vine_state: String;
-  let app_access_time = mac_app.access_time;
-  let current_time = SystemTime::now();
-  // Get the number of days between the app access time and the current time
-  let days_between = current_time.duration_since(app_access_time).unwrap().as_secs() / 86400;
-  if days_between > config.stage_one_days{
-    vine_state = "1".to_string();
-  }
-  else if days_between > config.stage_two_days{
-    vine_state = "2".to_string();
-  }
-  else if days_between > config.stage_three_days{
-    vine_state = "3".to_string();
-  }
-  else if days_between > config.stage_four_days{
-    vine_state = "4".to_string();
-  }
-  else if days_between > config.stage_five_days{
-    vine_state = "5".to_string();
-  }
-  else {
-    vine_state = "0".to_string();
-  }
-  return vine_state;
+  // Base on the app first letter, get the correct Vine State
+  let first_letter = get_first_letter(&mac_app);
+  // If the first letter is A, use vine_state 0, if it is B, use vine_state 1, if it is C, use vine_state 2, if it is D, use vine_state 3, if it is E, use vine_State 4, if it is F, use vine_state 5, if it is G, use vine_state 0, and so on
+  let vine_state = match first_letter.as_str(){
+    "A" => {
+      0
+    }
+    "B" => {
+      1
+    }
+    "C" => {
+      2
+    }
+    "D" => {
+      3
+    }
+    "E" => {
+      4
+    }
+    "F" => {
+      5
+    }
+    "G" => {
+      0
+    }
+    "H" => {
+      1
+    }
+    "I" => {
+      2
+    }
+    "J" => {
+      3
+    }
+    "K" => {
+      4
+    }
+    "L" => {
+      5
+    }
+    "M" => {
+      0
+    }
+    "N" => {
+      1
+    }
+    "O" => {
+      2
+    }
+    "P" => {
+      3
+    }
+    "Q" => {
+      4
+    }
+    "R" => {
+      5
+    }
+    "S" => {
+      0
+    }
+    "T" => {
+      1
+    }
+    "U" => {
+      2
+    }
+    "V" => {
+      3
+    }
+    "W" => {
+      4
+    }
+    "X" => {
+      5
+    }
+    "Y" => {
+      0
+    }
+    "Z" => {
+      1
+    }
+    _ => {
+      0
+    }
+
+  };
+  vine_state.to_string()
 }
 
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
@@ -199,24 +262,18 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
 fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::error::Error>> {
    let last_access_time: SystemTime = fs::metadata(&path)?.accessed().unwrap();
   let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = loop_through_dir(&path, &".icns".to_string(), true, false,0);
+  let app_name = &path.file_name().unwrap().to_str().unwrap();
   if app_icns.is_ok() {
     let app_icns: Vec<PathBuf> = app_icns.unwrap();
    
-    Ok(MacApplication{path : path, icns : app_icns, access_time : last_access_time})
+    Ok(MacApplication{path : (&path).to_owned(), icns : app_icns, access_time : last_access_time, name: (app_name).to_string()})
   }
   else {
     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app icns")))
   }
 }
 
-// TODO: Commission an artist to make the 16x16 vine icons with transparency 
-/* Overlays one image ontop of another image (NEEDS TO BE CONVERTED TO PNG BEFOREHAND)
-* Parameters:
-*  base_image: The image to be overlaid on top of another image
-*  overlay_image: The image to be overlayed on top of the base image
-* Returns: 
-*  The image with the overlayed image on top of the base image
-*/
+
 fn add_overlay(mut base_image : image::DynamicImage, overlay_image : &image::DynamicImage) -> image::DynamicImage {
   image::imageops::overlay(&mut base_image, overlay_image,0 ,0 );
   return base_image;
