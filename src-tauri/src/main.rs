@@ -12,7 +12,7 @@ use parser::app_utlity_fns::{get_first_letter};
 
 fn main() {
   generate_config(&get_home_dir().unwrap());
-  mac_logic();
+  // Running this code will generate an infinitely large file on mac for now: mac_logic();
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
