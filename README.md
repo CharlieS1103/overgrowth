@@ -1,14 +1,9 @@
 # Overgrowth
 
-***A desktop application to grow vines on unnused applications over time.***
+*** A desktop application to handle the mass modification of icons and cool plugins to integrate with many different os's
 
-## How it works:
-* Tracks the amount of time where an app on your local computer is idle/not used.
-* It effectively will loop through and store the original icon files in the directory set in the users config
-* It will then check the access time of every application or shortcut(OS dependent) and modify the icons respesctively.
-
-## Installation:
-Coming Soon.
-```Javascript
-console.log("Hi");
-```
+## Plans:
+* First i obiously need to get the base functionality in (changing of icons and storage of data that will be needed)
+* Polish all the code and take the time to actually learn rust.
+* Create an embedded scripting language so users can make plugins that can be installed by the users through the UI
+* Create an actual UI
