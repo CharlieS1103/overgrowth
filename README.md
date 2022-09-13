@@ -1,6 +1,6 @@
 # Overgrowth
 
-*** A desktop application to handle the mass modification of icons and cool plugins to integrate with many different os's
+A desktop application to handle the mass modification of icons and cool plugins to integrate with many different os's
 
 ## Plans:
 * First i obiously need to get the base functionality in (changing of icons and storage of data that will be needed)
