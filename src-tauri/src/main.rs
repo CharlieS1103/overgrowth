@@ -1,11 +1,11 @@
 mod structs;
 mod config;
 mod parser;
-use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File, OpenOptions}, io::{BufReader, Read, Write}};
+use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, OpenOptions}, io::{Read, Write}};
 use structs::{icon_state::IconState, mac_app::MacApplication};
 use config::{parse_config, generate_config};
-use icns::{IconFamily};
-use parser::app_utlity_fns::{get_first_letter};
+
+use parser::app_utlity_fns::{get_first_letter, letter_to_num};
 
 
 
@@ -115,7 +115,7 @@ fn mac_logic(){
       // TODO: Ensure the toml file is written in the correct format to parse it back in
 
 
-      let mut toml_file : IconState = toml::from_str(&read_file_as_string(&vine_file).unwrap()).unwrap();
+      let mut toml_file : IconState = toml::from_str(&read_file_as_string(&icon_file).unwrap()).unwrap();
       
       for app in mac_apps {
         let vine_state = &mut get_vine_state(&app);
@@ -138,7 +138,7 @@ fn mac_logic(){
           .write(true)
           .read(true)
           .append(true)
-          .open(&vine_file)
+          .open(&icon_file)
           .unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
@@ -152,90 +152,8 @@ fn get_vine_state(mac_app : &MacApplication) -> String {
   // Base on the app first letter, get the correct Vine State
   let first_letter = get_first_letter(&mac_app);
   // If the first letter is A, use vine_state 0, if it is B, use vine_state 1, if it is C, use vine_state 2, if it is D, use vine_state 3, if it is E, use vine_State 4, if it is F, use vine_state 5, if it is G, use vine_state 0, and so on
-  let vine_state = match first_letter.as_str(){
-    "A" => {
-      0
-    }
-    "B" => {
-      1
-    }
-    "C" => {
-      2
-    }
-    "D" => {
-      3
-    }
-    "E" => {
-      4
-    }
-    "F" => {
-      5
-    }
-    "G" => {
-      0
-    }
-    "H" => {
-      1
-    }
-    "I" => {
-      2
-    }
-    "J" => {
-      3
-    }
-    "K" => {
-      4
-    }
-    "L" => {
-      5
-    }
-    "M" => {
-      0
-    }
-    "N" => {
-      1
-    }
-    "O" => {
-      2
-    }
-    "P" => {
-      3
-    }
-    "Q" => {
-      4
-    }
-    "R" => {
-      5
-    }
-    "S" => {
-      0
-    }
-    "T" => {
-      1
-    }
-    "U" => {
-      2
-    }
-    "V" => {
-      3
-    }
-    "W" => {
-      4
-    }
-    "X" => {
-      5
-    }
-    "Y" => {
-      0
-    }
-    "Z" => {
-      1
-    }
-    _ => {
-      0
-    }
-
-  };
+  let vine_state = letter_to_num(&first_letter);
+  
   vine_state.to_string()
 }
 
