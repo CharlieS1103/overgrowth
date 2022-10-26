@@ -1,8 +1,8 @@
 mod structs;
 mod config;
 mod parser;
-use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File, OpenOptions}, io::{BufReader, Read, Write}};
-use structs::{icon_state::IconState, mac_app::MacApplication};
+use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader, Read}};
+use structs::{vine_state::VineState, mac_app::MacApplication};
 use config::{parse_config, generate_config};
 use icns::{IconFamily};
 use parser::app_utlity_fns::{get_first_letter};
@@ -94,28 +94,15 @@ fn mac_logic(){
 
   // Loop through the vector of MacApplication structs and get the vine state of each app, then store the state in the config file
     // Create a new config file to store the vine states of the apps
-    let icon_file = get_home_dir().unwrap().join(".overgrowth/icon_states.toml");
-    println!("{:?}", icon_file);
+    let vine_file = get_home_dir().unwrap().join(".overgrowth/vine_states.toml");
+    println!("{:?}", vine_file);
     // Check if the file exists, if not create it
-    if !&icon_file.exists() {
-     fs::File::create(&icon_file).unwrap();
-     // Add "[\n] to the file to make it a valid toml file"
-      let mut file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .read(true)
-        .open(&icon_file)
-        .unwrap();
-      let mut contents = String::new();
-      file.read_to_string(&mut contents).unwrap();
-      contents.push_str("icon_states=[\n]");
-      file.write_all(contents.as_bytes()).unwrap();
+    if !&vine_file.exists() {
+     fs::File::create(&vine_file).unwrap();
     }
       // read the vine_states as a toml file and check if the app is already in the file and if it is, edit the state if it is not, add it
-      // TODO: Ensure the toml file is written in the correct format to parse it back in
-
-
-      let mut toml_file : IconState = toml::from_str(&read_file_as_string(&vine_file).unwrap()).unwrap();
+      
+      let mut toml_file : VineState = toml::from_str(&read_file_as_string(&vine_file).unwrap()).unwrap();
       
       for app in mac_apps {
         let vine_state = &mut get_vine_state(&app);
@@ -124,26 +111,10 @@ fn mac_logic(){
           let app_state =  vine_state;
           // Replace the old state with the new state
           toml_file.replace(path_as_string.to_string(), &app_state.to_string());
-          println!("Replacing {} with {}", path_as_string, app_state.to_string());
         }
         else {
           toml_file.insert((&path_as_string).to_string(), vine_state.clone());
-          println!("Inserting {} with {}", path_as_string, vine_state.to_string());
-          
-
         }
-      }
-      for (key, value) in toml_file.icon_states {
-        let mut file = OpenOptions::new()
-          .write(true)
-          .read(true)
-          .append(true)
-          .open(&vine_file)
-          .unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
-        contents.push_str(&format!("{} = {}\n", key, value));
-        file.write_all(contents.as_bytes()).unwrap();
       }
 }
 // Convert the access time to the correct Vine State
