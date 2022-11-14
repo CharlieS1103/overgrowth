@@ -2,7 +2,7 @@ mod app_structs;
 mod config;
 mod parser;
 use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader, Read}};
-use structs::{vine_state::VineState, mac_app::MacApplication};
+use app_structs::{mac_app::MacApplication};
 use config::{parse_config, generate_config};
 use icns::{IconFamily};
 use parser::app_utlity_fns::{get_first_letter};
@@ -123,98 +123,6 @@ fn mac_logic(){
   }
   
   
-}
-
-// Convert the access time to the correct Vine State
-fn get_vine_state(mac_app : &MacApplication) -> String {
-  // Base on the app first letter, get the correct Vine State
-  let first_letter = get_first_letter(&mac_app);
-  // If the first letter is A, use vine_state 0, if it is B, use vine_state 1, if it is C, use vine_state 2, if it is D, use vine_state 3, if it is E, use vine_State 4, if it is F, use vine_state 5, if it is G, use vine_state 0, and so on
-  let vine_state = match first_letter.as_str(){
-    "A" => {
-      0
-    }
-    "B" => {
-      1
-    }
-    "C" => {
-      2
-    }
-    "D" => {
-      3
-    }
-    "E" => {
-      4
-    }
-    "F" => {
-      5
-    }
-    "G" => {
-      0
-    }
-    "H" => {
-      1
-    }
-    "I" => {
-      2
-    }
-    "J" => {
-      3
-    }
-    "K" => {
-      4
-    }
-    "L" => {
-      5
-    }
-    "M" => {
-      0
-    }
-    "N" => {
-      1
-    }
-    "O" => {
-      2
-    }
-    "P" => {
-      3
-    }
-    "Q" => {
-      4
-    }
-    "R" => {
-      5
-    }
-    "S" => {
-      0
-    }
-    "T" => {
-      1
-    }
-    "U" => {
-      2
-    }
-    "V" => {
-      3
-    }
-    "W" => {
-      4
-    }
-    "X" => {
-      5
-    }
-    "Y" => {
-      0
-    }
-    "Z" => {
-      1
-    }
-    _ => {
-      0
-    }
-
-  };
-  vine_state.to_string()
 }
 
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
