@@ -2,7 +2,7 @@ mod app_structs;
 mod config;
 mod parser;
 use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader, Read}};
-use app_structs::{mac_app::MacApplication};
+use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
 use config::{parse_config, generate_config};
 use icns::{IconFamily};
 use parser::app_utlity_fns::{get_first_letter};
@@ -106,6 +106,7 @@ fn mac_logic(){
  * "{homedir}/Documents" 
  * "{homedir}/Desktop")
 */
+// TODO: Rename home path to application path for clarity purposes
   let home_path = get_home_dir().unwrap().join("/Applications");
   // "/User/{username}/Applications"
   let app_files = loop_through_dir(&home_path, &".app".to_string(), false, false, 0).unwrap(); 
@@ -115,6 +116,18 @@ fn mac_logic(){
       let app = get_mac_app_struct(app_file).unwrap();
       mac_apps.push(app);
   }
+  // Generate the config file
+  
+  generate_config(&get_home_dir().unwrap());
+  // Parse the config file
+  parse_config(&get_home_dir().unwrap());
+  // Generate the toml file
+  match generate_toml_file(&get_home_dir().unwrap(),&mac_apps){
+    Ok(_) => println!("Successfully generated toml file"),
+    Err(e) => println!("Error generating toml file: {}", e),
+  }
+
+
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
   }

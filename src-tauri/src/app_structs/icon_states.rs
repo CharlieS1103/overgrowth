@@ -1,0 +1,19 @@
+use std::{fs::File, path::PathBuf, error::Error, io::Write};
+use mac_app::MacApplication;
+use super::mac_app;
+
+
+pub fn generate_toml_file(home_dir : &PathBuf, icns : &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
+   // Create a new toml file
+    let mut file = File::create(home_dir.join(".overgrowth/icon_states.toml"))?;
+    println!("{:?}", home_dir.join(".overgrowth/icon_states.toml"));
+    // Write the toml file containing all the mac app icns 
+    let mut toml = String::new();
+    toml.push_str("[mac_apps]\n");
+    for app in icns {
+        toml.push_str(&format!("{} = \"{}\"\n", app.name, app.icns[0].file_name().unwrap().to_str().unwrap()));
+    }
+    file.write_all(toml.as_bytes())?;
+    Ok(())
+}
+
