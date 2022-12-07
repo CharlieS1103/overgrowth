@@ -1,11 +1,9 @@
 mod app_structs;
 mod config;
-mod parser;
 use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader, Read}};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
 use config::{parse_config, generate_config};
 use icns::{IconFamily};
-use parser::app_utlity_fns::{get_first_letter};
 
 
 
@@ -17,32 +15,34 @@ fn main() {
 }
 
 // Make a function to convert a .icns file to a .png file
-// TODO: Cleanup this entire function
-fn convert_icns_to_png(icns_path: &PathBuf){
-  let file = BufReader::new(File::open(icns_path).unwrap());
-    let  icon_family = IconFamily::read(file).unwrap();
-    let icon_type = icon_family.available_icons(); 
-   // Loop thorugh all the available icon types and convert them to png files
-    for icon in icon_type {
-      // TODO: We need to figure out how to handle Jpeg 2000 icons 
-      let image =  
-      match icon_family.get_icon_with_type(icon){
-        Ok(_) => icon_family.get_icon_with_type(icon).unwrap(),
-        Err(_) => continue,
-      };
-      // Create a direcory based on the icn file name 
-      let png_dir = icns_path.with_extension("");
-      // check if the directory exists, if not create it
-      if !png_dir.exists() {
-        fs::create_dir_all(&png_dir).unwrap();
-      }
-      
-      let icon_path = &png_dir.join(format!("{:?}.png", icon));
-      let file = File::create(&icon_path).unwrap();
-      image.write_png(file).unwrap();
-      
+// Make a function to convert a .icns file to a .png file
+fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+    // Read the icns file
+    let file = BufReader::new(File::open(icns_path)?);
+    let icon_family = IconFamily::read(file)?;
+
+    // Create a directory based on the icn file name
+    let png_dir = icns_path.with_file_name(icns_path.file_name().unwrap());
+    fs::create_dir_all(&png_dir)?;
+
+    // Loop through all the available icon types and convert them to png files
+    for icon in icon_family.available_icons() {
+        let image = match icon_family.get_icon_with_type(icon) {
+            Ok(img) => img,
+            Err(_) => continue,
+        };
+
+        // Create the png file path
+        let png_path = png_dir.join(format!("{:?}.png", icon));
+
+        // Write the png file
+        let file = File::create(&png_path)?;
+        image.write_png(file)?;
     }
+
+    Ok(())
 }
+
 
 // Return the home_dir of the current user.
 fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
@@ -52,46 +52,54 @@ fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
   } 
 }
 
-/* This function is recursive and will return a vector of all the .app files in the directory and all subdirectories 
+
+/* This function is recursive and will return a vector of all the files that match the search criteria in the directory and all subdirectories.
+ *
  * Parameters:
- * dir_path: The path to the directory to be searched
- * file_extension: The file extension to be searched for
- * check_sub_dir: Whether or not to check subdirectories
- */ 
-fn loop_through_dir(dir_path: &PathBuf, extension_type: &String, check_sub_dir: bool, check_app_files:bool, loop_inc: i64) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-  let mut found_files = vec![];
-  for entry in fs::read_dir(dir_path)? {
-    if let Ok(entry) = entry {
+ * dir_path: The path to the directory to be searched.
+ * criteria: A closure that specifies the search criteria. It should take a `PathBuf` and return a `bool`.
+ * check_sub_dir: Whether or not to check subdirectories.
+ */
+fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+    // Read the directory entries
+    let entries = fs::read_dir(dir_path)?;
+    println!("Entries: {:?}", entries);
 
-      // Check if we have permissions to the directory
-      if entry.metadata()?.permissions().readonly(){
-        continue;
-      }
-      if !entry.metadata().is_ok(){
-        println!("Could not get metadata for: {}", entry.path().display());
-        continue; 
-      }
-      let path = entry.path();
-      let mut app_check = true;
-      if !check_app_files && path.to_str().unwrap().ends_with(".app") && loop_inc > 0 {
-        app_check = false;
-      }
-      if path.to_str().unwrap().ends_with(extension_type) {
-          found_files.push(path);
-
-      }
-     
-      else if path.is_dir() && check_sub_dir && app_check{
-        // If it is a directory,  recursively call the function on that directory and append the results to the vector
-        let sub_files = loop_through_dir(&path, &extension_type, check_sub_dir, check_app_files, loop_inc + 1);
-        if sub_files.is_ok() {
-          found_files.append(&mut sub_files.unwrap());
+    // Filter the entries that match the search criteria
+    let matching_entries = entries.filter_map(|entry| {
+        let entry = entry.ok()?;
+        let path = entry.path();
+        if path.to_str().unwrap().ends_with(criteria){
+            Some(path)
+        } else {
+            None
         }
-        
-      }
+    });
+
+    // Convert the filtered entries into a vector of paths
+    let mut matching_paths: Vec<PathBuf> = matching_entries.collect();
+    // Print 
+
+    if check_sub_dir {
+        // Recursively search the subdirectories
+        let subdirs = fs::read_dir(dir_path)?
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                let path = entry.path();
+                if path.is_dir() {
+                    Some(path)
+                } else {
+                    None
+                }
+            });
+
+        for subdir in subdirs {
+            let subdir_results = search_directory(&subdir, criteria, check_sub_dir)?;
+            matching_paths.extend(subdir_results);
+        }
     }
-  }
-  Ok(found_files)
+    print!("{:?}", matching_paths);
+    Ok(matching_paths)
 }
 
 
@@ -107,9 +115,15 @@ fn mac_logic(){
  * "{homedir}/Desktop")
 */
 // TODO: Rename home path to application path for clarity purposes
-  let home_path = get_home_dir().unwrap().join("/Applications");
-  // "/User/{username}/Applications"
-  let app_files = loop_through_dir(&home_path, &".app".to_string(), false, false, 0).unwrap(); 
+  let path = get_home_dir().unwrap().join("/Applications");
+  // Check if the path.extension is none and if it is 
+  const EXTENSION_TYPE: &str = "app";
+  // Log path.extension().unwrap()
+
+
+  let app_files = search_directory(&path, EXTENSION_TYPE, true).unwrap();
+  // Print app_files
+  println!("{:?}", app_files);
    // Iterate through the vector of app files and get the MacApplication struct for each app
    let mut mac_apps: Vec<MacApplication> = Vec::new();
     for app_file in app_files {
@@ -150,7 +164,6 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
 
       // Convert icn_path into a PathBuf
     let icn_path = PathBuf::from(icn_path);
-
     let full_icon_path = home_dir.join(&icn_path);
     // full_icon_path (default): /Users/{username}/.overgrowth/icons
        if !&full_icon_path.exists() {
@@ -182,7 +195,8 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
   */
 fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::error::Error>> {
    let last_access_time: SystemTime = fs::metadata(&path)?.accessed().unwrap();
-  let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = loop_through_dir(&path, &".icns".to_string(), true, false,0);
+  const EXTENSION_TYPE: &str = "icns";
+  let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = search_directory(&path, EXTENSION_TYPE, true);
   let app_name = &path.file_name().unwrap().to_str().unwrap();
   if app_icns.is_ok() {
     let app_icns: Vec<PathBuf> = app_icns.unwrap();
