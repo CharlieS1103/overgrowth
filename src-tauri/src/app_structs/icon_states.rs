@@ -25,3 +25,10 @@ pub fn generate_toml_file(home_dir : &PathBuf, icns : &Vec<MacApplication>) -> R
     Ok(())
 }
 
+// Make this parasable by the toml crate
+pub struct MacApp {
+    pub path: String,
+    pub icns: Vec<String>,
+    pub name: String,
+}
+

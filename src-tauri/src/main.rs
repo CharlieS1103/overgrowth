@@ -195,10 +195,6 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
 }
 
 
-fn add_overlay(mut base_image : image::DynamicImage, overlay_image : &image::DynamicImage) -> image::DynamicImage {
-  image::imageops::overlay(&mut base_image, overlay_image,0 ,0 );
-  return base_image;
-}
 
 /*
 Essentially just restart the mac dock and clear the cache of the dock icons to make sure the icons are up to date
@@ -211,45 +207,6 @@ fn _restart_dock_mac(){
                 .expect("Failed to start echo process");
             drop(echo_child_rm);
 }
-
-
-
-
-
-/* 
-// Windows integrations: 
-
-
-// Windows specific function to find all the .lnk files
-fn _win_find_lnk_files(){
-  /*  For now only look for .lnk files in the /Desktop directory just for the sake of making development faster
-   In the future also scan the startup folder 
-   */
-  let home_path = get_home_dir().unwrap().join("/Desktop");
-  // "/User/{username}/C:\Users\<USERNAME>\Desktop"
-  let app_files = loop_through_dir(&home_path, &".lnk".to_string(), false).unwrap(); 
-   // Iterate through the vector of lnk files and get the WinApplication struct for each lnk
-   let mut win_apps: Vec<WinApplication> = Vec::new();
-    for app_file in app_files {
-      let app = _get_win_app_struct(app_file).unwrap();
-      win_apps.push(app);
-      println!("{:?}", win_apps);
-  }
-}
-
-fn _get_win_app_struct(path: PathBuf) -> Result<WinApplication, Box<dyn std::error::Error>> {
-  let app_ico: Result<Vec<PathBuf>, Box<dyn Error>> = loop_through_dir(&path, &".ico".to_string(), false);
-  let last_access_time: SystemTime = fs::metadata(&path)?.accessed().unwrap();
-  if app_ico.is_ok() {
-    let app_ico = app_ico.unwrap();
-    Ok(WinApplication{path : path, icos: app_ico, access_time : last_access_time})
-  }
-  else {
-    Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app lnk")))
-  }
-}
-
-*/
 
 
 
