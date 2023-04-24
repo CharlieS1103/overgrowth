@@ -13,14 +13,27 @@ pub fn generate_toml_file(home_dir : &PathBuf, icns : &Vec<MacApplication>) -> R
     let mut toml = String::new();
     toml.push_str("[mac_apps]\n");
     for app in icns {
+        // If app.path.with_extension("").file_name().unwrap().to_str().unwrap().replace(" ", ".") contains a parenthesis, do not write it to the toml file, this will both slim down the amount of unneeded icon changes(helper apps and such) and prevent errors from occuring
+    
+        if app.path.with_extension("").file_name().unwrap().to_str().unwrap().replace(" ", ".").contains("(") {
+            continue;
+        }
+        // Get rid of any duplicate apps
+        if toml.contains(&app.path.with_extension("").file_name().unwrap().to_str().unwrap().replace(" ", ".")) {
+            continue;
+        }
         // Seperate each application  into it's own section
-        toml.push_str(&format!("[[{}]]\n", app.path.with_extension("").file_name().unwrap().to_str().unwrap()));
+        toml.push_str(&format!("[[{}]]\n", app.path.with_extension("").file_name().unwrap().to_str().unwrap().replace(" ", ".")));
         toml.push_str(&format!("path = \"{}\"\n", app.path.to_str().unwrap()));
         toml.push_str(&format!("name = \"{}\"\n", app.name));
+        // If the app has no icns, don't write the icns section
+        if app.icns.len() == 0 {
+            continue;
+        }
         toml.push_str(&format!("icns = [\n"));
         
         for icn in &app.icns {
-            toml.push_str(&format!("\"{}\",\n", icn.to_str().unwrap()));
+            toml.push_str(&format!("\"{}\",\n", icn.as_str()));
         }
         toml.push_str(&format!("]\n"));
     }
@@ -29,7 +42,7 @@ pub fn generate_toml_file(home_dir : &PathBuf, icns : &Vec<MacApplication>) -> R
 }
 
 // Parses the toml file at the given path and returns a vector of MacApplication structs
-fn parse_toml_file(toml_path: &PathBuf) -> Result<Vec<MacApplication>, Box<dyn Error>> {
+pub fn parse_toml_file(toml_path: &PathBuf) -> Result<Vec<MacApplication>, Box<dyn Error>> {
     // Read the toml file and parse it into a toml value
     let toml_value = parse_toml_string(&mut BufReader::new(File::open(toml_path)?))?;
 
@@ -38,7 +51,8 @@ fn parse_toml_file(toml_path: &PathBuf) -> Result<Vec<MacApplication>, Box<dyn E
 
     // Convert the mac_apps table to a vector of mac_app_structs
     let mac_app_vec = convert_table_to_vec(&mac_apps_table)?;
-
+    // Print the mac_app_vec
+    println!("{:?}", mac_app_vec);
     Ok(mac_app_vec)
 }
 
@@ -79,11 +93,11 @@ fn convert_table_to_vec(mac_apps_table: &Table) -> Result<Vec<MacApplication>, B
         // Use the From trait to construct a MacApplication instance from the parsed values
         let mac_app = MacApplication {
             path: path,
-            icns: icns.into_iter().map(|icn| PathBuf::from(icn)).collect(),
+            icns: icns.into_iter().map(|icn| PathBuf::from(icn).display().to_string()).collect(),
             name: name.to_string(),
         };
         Ok(mac_app)
-    }).collect::<Result<Vec<MacApplication>, _>>()?;
+    }).collect::<Result<Vec<MacApplication>, Box<dyn std::error::Error>>>()?;
 
     Ok(mac_app_vec)
 }

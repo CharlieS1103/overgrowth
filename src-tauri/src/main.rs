@@ -1,7 +1,7 @@
 mod app_structs;
 mod config;
-use std::{path::PathBuf, time::SystemTime, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader, Read}};
-use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
+use std::{path::PathBuf, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader, Read}};
+use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
 use icns::{IconFamily};
 
@@ -42,6 +42,11 @@ fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+// Make a function to convert a .png file to a .icns file
+fn convert_png_to_icns(){
+  
+
+}
 
 
 // Return the home_dir of the current user.
@@ -63,7 +68,6 @@ fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
 fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
     // Read the directory entries
     let entries = fs::read_dir(dir_path)?;
-    println!("Entries: {:?}", entries);
 
     // Filter the entries that match the search criteria
     let matching_entries = entries.filter_map(|entry| {
@@ -98,7 +102,6 @@ fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> 
             matching_paths.extend(subdir_results);
         }
     }
-    print!("{:?}", matching_paths);
     Ok(matching_paths)
 }
 
@@ -122,8 +125,6 @@ fn mac_logic(){
 
 
   let app_files = search_directory(&path, EXTENSION_TYPE, true).unwrap();
-  // Print app_files
-  println!("{:?}", app_files);
    // Iterate through the vector of app files and get the MacApplication struct for each app
    let mut mac_apps: Vec<MacApplication> = Vec::new();
     for app_file in app_files {
@@ -140,13 +141,16 @@ fn mac_logic(){
     Ok(_) => println!("Successfully generated toml file"),
     Err(e) => println!("Error generating toml file: {}", e),
   }
+ // PArse the toml file and set it to a variable 
+  let toml_file = parse_toml_file(&get_home_dir().unwrap().join(".overgrowth/icon_states.toml")).unwrap();
+  // Loop through the MacApplication Vec and print the name of each app
+  for app in &toml_file {
+    println!("Name: {}", app.name);
+  }
 
 
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
-  }
-  else {
-    println!("{:?}", mac_store_icns_files(&mac_apps));
   }
   
   
@@ -173,15 +177,16 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
       // Check to see if the file already exists in the configs icon dir
       let app_icon_dir = &full_icon_path.join(app.path.with_extension("").file_name().unwrap());
       // app_icon_dir (default): Users/{username}/.overgrowth/icons/{app name}/
-      
+      //Convert icn to a PathBuf
+      let icn = &PathBuf::from(icn);
       // Check if the app icon dir exists and if it doesn't create it
       if !app_icon_dir.exists() {
         fs::create_dir_all(app_icon_dir)?;
       }
-      if !app_icon_dir.join(icn.file_name().unwrap()).exists() {
+      if !app_icon_dir.join(&icn.file_name().unwrap()).exists() {
         // If it doesn't exist, copy the file to the configs icon dir
         // Check if there is another .app file in the icn path, if so, create a new directory for the app
-        fs::copy(home_dir.join(icn), app_icon_dir.join(icn.file_name().unwrap()))?;
+        fs::copy(home_dir.join(icn), app_icon_dir.join(&icn.file_name().unwrap()))?;
         
       }
     }
@@ -194,14 +199,15 @@ fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn st
   *  app_path: The path to the application
   */
 fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::error::Error>> {
-   let last_access_time: SystemTime = fs::metadata(&path)?.accessed().unwrap();
   const EXTENSION_TYPE: &str = "icns";
   let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = search_directory(&path, EXTENSION_TYPE, true);
-  let app_name = &path.file_name().unwrap().to_str().unwrap();
+  // Convert app+icons from PathBuf to String
+
+  let app_name : String = (&path.file_name().unwrap().to_str().unwrap()).to_string();
   if app_icns.is_ok() {
-    let app_icns: Vec<PathBuf> = app_icns.unwrap();
+    let app_icns: Vec<String> = app_icns.unwrap().iter().map(|x| x.to_str().unwrap().to_string()).collect();
    
-    Ok(MacApplication{path : (&path).to_owned(), icns : app_icns, access_time : last_access_time, name: (app_name).to_string()})
+    Ok(MacApplication{path : (&path).to_owned(), icns : app_icns, name: (app_name).to_string()})
   }
   else {
     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app icns")))
