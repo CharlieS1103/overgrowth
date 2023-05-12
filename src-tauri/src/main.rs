@@ -1,6 +1,6 @@
 mod app_structs;
 mod config;
-use std::{path::PathBuf, process::Stdio, process::Command, error::Error, fs::{self, File}, io::{BufReader, Read}};
+use std::{path::PathBuf, error::Error, fs::{self, File}, io::{BufReader, Read}};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
 use icns::{IconFamily};
@@ -14,7 +14,6 @@ fn main() {
     .expect("error while running tauri application");
 }
 
-// Make a function to convert a .icns file to a .png file
 // Make a function to convert a .icns file to a .png file
 fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     // Read the icns file
@@ -216,18 +215,18 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
 
 
 
-/*
-Essentially just restart the mac dock and clear the cache of the dock icons to make sure the icons are up to date
-*/
-fn _restart_dock_mac(){
-    let echo_child_rm = Command::new("bash")
-                .args(["-c", "rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock"])
-                .stdout(Stdio::piped())
-                .spawn()
-                .expect("Failed to start echo process");
-            drop(echo_child_rm);
-}
 
 
 
 
+
+// 1. Get the home directory of the current user
+// 2. Search the home directory for .app files
+// 3. For each .app file, get the name of the app, the path to the app, and the path to the icns files for the app
+// 4. Store the icns files in the configs icon directory
+// 5. Generate the toml file
+// 6. Parse the toml file
+// 7. For each app in the toml file, get the name of the app, the path to the app, and the path to the icns files for the app
+// 8. For each app in the toml file, loop through the icns files and change the icon of the app to the current icns file
+// 9. Restart the dock
+// 10. Clear the dock cache
