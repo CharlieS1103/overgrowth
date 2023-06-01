@@ -1,10 +1,10 @@
 [package]
 name = "overgrowth"
 version = "0.1.0"
-description = "Grow vines on applications you haven't used in a while"
+description = "Interact with and morph application icons using scripts made from other users"
 authors = ["CharlieS1103"]
 license = ""
-repository = ""
+repository = "https://github.com/CharlieS1103/overgrowth"
 default-run = "overgrowth"
 edition = "2021"
 rust-version = "1.57"
@@ -22,6 +22,8 @@ home = "0.5.3"
 toml = {version = "0.4.2"}
 image = "0.24.3"
 icns = "0.3.1"
+combine = "4.6.6"
+
 
 [features]
 # by default Tauri runs in production mode

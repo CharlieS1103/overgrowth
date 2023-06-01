@@ -1,9 +1,11 @@
 mod app_structs;
 mod config;
-use std::{path::PathBuf, error::Error, fs::{self, File}, io::{BufReader, Read}};
+mod parser;
+use std::{path::{PathBuf, Path}, error::Error, fs::{self, File}, io::{BufReader, Read, BufWriter}};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
-use icns::{IconFamily};
+use icns::{IconFamily, IconType};
+use image::{io::Reader as ImageReader, ImageBuffer};
 
 
 
@@ -41,12 +43,13 @@ fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-// Make a function to convert a .png file to a .icns file
-fn convert_png_to_icns(){
-  
 
+
+
+fn convert_pngs_to_icns(png_dir: &Path, icns_path: &Path) /*-> Result<(), Box<dyn Error>>*/ {
+      // Placeholder but this function is really important but also hard to figure out
 }
-
+ 
 
 // Return the home_dir of the current user.
 fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
@@ -151,7 +154,8 @@ fn mac_logic(){
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
   }
-  
+
+
   
 }
 
