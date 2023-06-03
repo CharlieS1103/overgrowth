@@ -4,10 +4,7 @@ mod parser;
 use std::{path::{PathBuf, Path}, error::Error, fs::{self, File}, io::{BufReader, Read, BufWriter}};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
-use icns::{IconFamily, IconType};
-use image::{io::Reader as ImageReader, ImageBuffer};
-
-
+use parser::{parse_app, parse_app_dir};
 
 fn main() {
   mac_logic();
@@ -15,41 +12,6 @@ fn main() {
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
-
-// Make a function to convert a .icns file to a .png file
-fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
-    // Read the icns file
-    let file = BufReader::new(File::open(icns_path)?);
-    let icon_family = IconFamily::read(file)?;
-
-    // Create a directory based on the icn file name
-    let png_dir = icns_path.with_file_name(icns_path.file_name().unwrap());
-    fs::create_dir_all(&png_dir)?;
-
-    // Loop through all the available icon types and convert them to png files
-    for icon in icon_family.available_icons() {
-        let image = match icon_family.get_icon_with_type(icon) {
-            Ok(img) => img,
-            Err(_) => continue,
-        };
-
-        // Create the png file path
-        let png_path = png_dir.join(format!("{:?}.png", icon));
-
-        // Write the png file
-        let file = File::create(&png_path)?;
-        image.write_png(file)?;
-    }
-
-    Ok(())
-}
-
-
-
-fn convert_pngs_to_icns(png_dir: &Path, icns_path: &Path) /*-> Result<(), Box<dyn Error>>*/ {
-      // Placeholder but this function is really important but also hard to figure out
-}
- 
 
 // Return the home_dir of the current user.
 fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
@@ -217,7 +179,11 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
   }
 }
 
-
+// What i need to do for parsing
+// 1. Provide a folder in the app settings directory for the embedded scripts
+// 2. Load the embedded scripts 
+// 3. Parse the embedded scripts
+// 4. Execute the parsed code 
 
 
 

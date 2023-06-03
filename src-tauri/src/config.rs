@@ -14,6 +14,11 @@ pub fn generate_config(home_path: &PathBuf){
   if !overgrowth_path.exists() {
     std::fs::create_dir_all(overgrowth_path).unwrap();
   }
+  // Create a scripts directory in the overgrowth directory if it doesn't exist
+  let scripts_path = home_path.join(".overgrowth/scripts");
+  if !scripts_path.exists() {
+    std::fs::create_dir_all(scripts_path).unwrap();
+  }
   // Check if the config file exists, if it does exit this function
   let config_path = home_path.join(".overgrowth/config.toml");
   if config_path.exists() {

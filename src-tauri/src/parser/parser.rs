@@ -1,7 +1,6 @@
-use combine::parser::char::{char, digit, letter,space, string};
-use combine::{choice, many1, Parser};
-
-
+use combine::parser::char::{char, digit, letter, space, string};
+use combine::stream::PointerOffset;
+use combine::{choice, many1, Parser, EasyParser, attempt};
 
 #[derive(Debug, PartialEq)]
 enum ComparisonOperator {
@@ -23,9 +22,9 @@ pub enum Expression {
 
 #[derive(Debug, PartialEq)]
 enum MetadataField {
-    Type(String),
-    Author(String),
-    Other(String, String),
+    Type(String, String ),
+    Author(String, String),
+    Other(String, String)
 }
 
 #[derive(Debug, PartialEq)]
@@ -40,7 +39,7 @@ struct ImageMetadata {
     actions: Vec<Action>,
 }
 
- fn comparison_operator<Input>() -> impl Parser<Input, Output = ComparisonOperator>
+fn comparison_operator<Input>() -> impl Parser<Input, Output = ComparisonOperator>
 where
     Input: combine::Stream<Token = char>,
 {
@@ -53,6 +52,7 @@ where
         char('<').with(char('=')).map(|_| ComparisonOperator::LessThanOrEqual),
     ))
 }
+
 pub fn variable_reference<Input>() -> impl Parser<Input, Output = String>
 where
     Input: combine::Stream<Token = char>,
@@ -73,11 +73,10 @@ where
     Input: combine::Stream<Token = char>,
 {
     char('"')
-        .with(many1(choice((letter(), digit()))))
+        .with(many1(choice((letter(), digit(), space()))))
         .skip(char('"'))
         .map(|s: String| s.to_owned())
 }
-
 
 pub fn binary_operation<Input>() -> impl Parser<Input, Output = Expression>
 where
@@ -88,7 +87,13 @@ where
         comparison_operator(),
         variable_reference(),
     )
-        .map(|(left, op, right)| Expression::BinaryOperation(Box::new(Expression::VariableReference(left)), op, Box::new(Expression::VariableReference(right))))
+    .map(|(left, op, right)| {
+        Expression::BinaryOperation(
+            Box::new(Expression::VariableReference(left)),
+            op,
+            Box::new(Expression::VariableReference(right)),
+        )
+    })
 }
 
 fn expression<Input>() -> impl Parser<Input, Output = Expression>
@@ -108,84 +113,73 @@ where
     Input: combine::Stream<Token = char>,
 {
     let type_parser = (
-        string("metadata field "),
+        attempt(string("metadata field ")),
         string_literal(),
         string(" is "),
         string_literal(),
     )
-        .map(|(_, key, _, value)| MetadataField::Type(value));
-    let author_parser = (
-        string("metadata field "),
-        string_literal(),
-        string(" is "),
-        string_literal(),
-    )
-        .map(|(_, key, _, value)| MetadataField::Author(value));
-    let other_parser = (
-        string("metadata field "),
-        string_literal(),
-        string(" is "),
-        string_literal(),
-    )
-        .map(|(_, key, _, value)| MetadataField::Other(key, value));
+    .map(|(_, key, _, value)| MetadataField::Type(key,value));
 
-    choice((
-        type_parser,
-        author_parser,
-        other_parser,
-    ))
+    let author_parser = (
+        attempt(string("metadata field ")),
+        string_literal(),
+        string(" is "),
+        string_literal(),
+    )
+    .map(|(_, key, _, value)| MetadataField::Author(key ,value));
+
+
+    choice((type_parser, author_parser))
 }
 
-pub fn image_metadata<Input>() -> impl Parser<Input, Output = ImageMetadata>
+fn image_metadata<Input>() -> impl Parser<Input, Output = ImageMetadata>
 where
     Input: combine::Stream<Token = char>,
 {
-    let field_parser = (
-        string("metadata field "),
-        metadata_field(),
-        string(" is "),
-        string_literal(),
-    )
-        .map(|(_, field, _, value)| (field, value));
+    
+    let field_parser = metadata_field();
 
     let action_parser = choice((
-        string("change color to ").with(string_literal()).map(Action::ChangeColor),
-        string("add overlay file: ").with(string_literal()).map(Action::AddOverlay),
+        string("change color to ")
+            .with(string_literal())
+            .map(Action::ChangeColor),
+        string("add overlay file: ")
+            .with(string_literal())
+            .map(Action::AddOverlay),
     ));
 
-    let fields_parser = many1(field_parser).map(|fields:Vec<(MetadataField, String)>| {
-        fields
-            .into_iter()
-            .map(|(field, value)| match field {
-                MetadataField::Type(_) => field,
-                MetadataField::Author(_) => field,
-                MetadataField::Other(key, _) => MetadataField::Other(key, value),
-            })
-            .collect()
-    });
-
+    let fields_parser = many1(field_parser);
+   
     let actions_parser = many1(action_parser);
 
     (
-        string("where "),
+        string("where"),
+        space(),
         fields_parser,
-        string(" { "),
+        space(),
+        string("{"),
+        space(),
         actions_parser,
-        string(" }"),
+        space(),
+        string("}"),
     )
-        .map(|(_, fields, _, actions, _)| ImageMetadata { fields, actions })
+    .map(|(_, _, fields, _, _, _, actions, _, _)| ImageMetadata { fields, actions })
 }
 
-
+fn parse(input: &str) -> Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> {
+    image_metadata().easy_parse(input)
+}
 #[cfg(test)]
 mod test_parser {
-use super::*;
-    #[test]
-        fn test(){
-            let input = r#"metadata field "Type" is "Landscape" where metadata field "Author" is "John Doe" { change color to "blue"; add overlay file: "overlay.png"; }"#;
-            let result = image_metadata().parse(input);
-            println!("{:?}", result);
-            assert!(result.is_ok());
-        }
-}
+    
 
+    use super::*;
+
+    #[test]
+    fn test() {
+        let input: &str = r#"where metadata field "Type" is "Landscape"{ change color to "blue" }"#;
+        let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
+}
