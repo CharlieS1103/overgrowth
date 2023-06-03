@@ -34,7 +34,7 @@ enum Action {
 }
 
 #[derive(Debug, PartialEq)]
-struct ImageMetadata {
+pub struct ImageMetadata {
     fields: Vec<MetadataField>,
     actions: Vec<Action>,
 }
@@ -166,7 +166,7 @@ where
     .map(|(_, _, fields, _, _, _, actions, _, _)| ImageMetadata { fields, actions })
 }
 
-fn parse(input: &str) -> Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> {
+pub fn parse(input: &str) -> Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> {
     image_metadata().easy_parse(input)
 }
 #[cfg(test)]

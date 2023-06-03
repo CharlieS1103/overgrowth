@@ -4,7 +4,7 @@ mod parser;
 use std::{path::{PathBuf, Path}, error::Error, fs::{self, File}, io::{BufReader, Read, BufWriter}};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
-use parser::{parse_app, parse_app_dir};
+use parser::parser::parse;
 
 fn main() {
   mac_logic();

@@ -1,5 +1,7 @@
 use icns::{IconFamily, IconType};
 use image::{io::Reader as ImageReader, ImageBuffer};
+
+
 fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     // Read the icns file
     let file = BufReader::new(File::open(icns_path)?);
