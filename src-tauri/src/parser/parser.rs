@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::Read;
+
 use combine::parser::char::{char, digit, letter, space, string};
 use combine::stream::PointerOffset;
 use combine::{choice, many1, Parser, EasyParser, attempt};
@@ -132,7 +135,7 @@ where
     choice((type_parser, author_parser))
 }
 
-fn image_metadata<Input>() -> impl Parser<Input, Output = ImageMetadata>
+pub fn image_metadata<Input>() -> impl Parser<Input, Output = ImageMetadata>
 where
     Input: combine::Stream<Token = char>,
 {
@@ -156,19 +159,26 @@ where
         string("where"),
         space(),
         fields_parser,
-        space(),
         string("{"),
         space(),
         actions_parser,
         space(),
         string("}"),
     )
-    .map(|(_, _, fields, _, _, _, actions, _, _)| ImageMetadata { fields, actions })
+    .map(|(_, _, fields, _, _, actions, _, _)| ImageMetadata { fields, actions })
 }
 
 pub fn parse(input: &str) -> Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> {
     image_metadata().easy_parse(input)
 }
+pub fn load_file(filename: &str) -> Result<String, std::io::Error> {
+    let mut file = File::open(filename)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    Ok(contents)
+}
+
+
 #[cfg(test)]
 mod test_parser {
     

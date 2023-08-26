@@ -1,10 +1,11 @@
 mod app_structs;
 mod config;
 mod parser;
-use std::{path::{PathBuf, Path}, error::Error, fs::{self, File}, io::{BufReader, Read, BufWriter}};
+use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{BufReader, Read, BufWriter}};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
-use parser::parser::parse;
+use parser::parser::{parse, load_file, ImageMetadata};
+//use interpreter::Interpreter;
 
 fn main() {
   mac_logic();
@@ -116,11 +117,27 @@ fn mac_logic(){
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
   }
-
-
-  
 }
 
+/* 
+
+
+
+
+  fn load_scripts() -> Result<Vec<String>, std::io::Error> {
+    let script_dir = get_home_dir().unwrap().join(".overgrowth/scripts");
+    let mut scripts = Vec::new();
+    for entry in read_dir(script_dir)? {
+        let path = entry?.path();
+        if path.is_file() {
+            let contents = load_file(path.to_str().unwrap())?;
+            scripts.push(contents);
+        }
+    }
+    Ok(scripts)
+}
+Need to begin writing an interpreter for the scripts which will take the fields and actions from the parsed script and execute them
+*/
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
 fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
   let config = parse_config(&get_home_dir().unwrap());
