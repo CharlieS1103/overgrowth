@@ -3,7 +3,7 @@ import Index from './pages';
 
 export default function App() {
   return (
-    <div className="App bg-black">
+    <div>
       <Index />
     </div>
   )

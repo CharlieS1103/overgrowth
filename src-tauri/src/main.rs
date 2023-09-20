@@ -5,7 +5,8 @@ use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
 use parser::parser::{parse, load_file, ImageMetadata};
-//use interpreter::Interpreter;
+use parser::interpreter::{apply_actions_to_images};
+
 
 fn main() {
   mac_logic();
