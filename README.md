@@ -10,7 +10,7 @@ A desktop application to handle the mass modification of icons and cool plugins 
 
 ## Additional Notes
 
-This roject is likely very messy and could use some refining, I took on this project which in my own personal opinion is a tad gargantuan without much (or any) experience with rust and have slowed down progress on it quite a bit.
+This project is likely very messy and could use some refining, I took on this project which in my own personal opinion is a tad gargantuan without much (or any) experience with rust and have slowed down progress on it quite a bit.
 If you'd like to contribute feel more than welcome, but this is a forewarning that you will likely see objectively bad code at some point and feel more than free to call me out on it.
 
 ### IMPORTANT: 
