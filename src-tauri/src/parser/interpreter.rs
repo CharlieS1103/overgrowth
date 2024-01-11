@@ -3,7 +3,7 @@ use icns::Image;
 use super::parser::image_metadata;
 use super::parser::ImageMetadata;
 
-
+/* 
 pub fn apply_actions_to_images(images: &mut Vec<ImageMetadata>, fields: &Vec<(String, String)>, actions: &Vec<(String, String)>) {
     for image in images {
         for field in fields {
@@ -48,3 +48,4 @@ mod tests {
         
     }
 }
+*/
