@@ -2,50 +2,71 @@ use icns::Image;
 
 use super::parser::image_metadata;
 use super::parser::ImageMetadata;
+use super::parser::MetadataField;
+use super::parser::Action;
+use super::parser::parse;
 
-/* 
-pub fn apply_actions_to_images(images: &mut Vec<ImageMetadata>, fields: &Vec<(String, String)>, actions: &Vec<(String, String)>) {
-    for image in images {
-        for field in fields {
-            if field.1 == "" || image.get(&field.0) == Some(&field.1) {
-                for action in actions {
-                    match action.0.as_str() {
-                        "ChangeColor" => image.color = action.1.clone(),
-                        "AddOverlay" => image.add_overlay(action.1.clone()),
-                        // add more actions here as needed
-                        _ => (),
-                    }
+pub struct Interpreter {
+    state: std::collections::HashMap<String, String>,
+}
+
+impl Interpreter {
+    pub fn new() -> Self {
+        Self {
+            state: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn interpret(&mut self, metadata: ImageMetadata) {
+    
+        for field in metadata.fields {
+            
+            match field {
+                MetadataField::Type(mut key, value) => {
+                    key = "FIELD:".to_owned() + &key.to_uppercase();
+                    println!("Setting type {} to {}", key, value);
+                    self.state.insert(key, value);
+                }
+                MetadataField::Author(mut key, value) => {
+                    key =  "FIELD:".to_owned() + &key.to_uppercase();
+                    println!("Setting author {} to {}", key, value);
+                    self.state.insert(key, value);
+                }
+                MetadataField::Other(mut key, value) => {
+                    key =  "FIELD:".to_owned() + &key.to_uppercase();
+                    println!("Setting other {} to {}", key, value);
+                    self.state.insert(key, value);
+                }
+            }
+        }
+
+        for action in metadata.actions {
+            match action {
+                Action::ChangeColor(color) => {
+                    println!("Changing color to {}", color);
+                }
+                Action::AddOverlay(overlay) => {
+                    println!("Adding overlay {}", overlay);
                 }
             }
         }
     }
 }
 
-
+// WRite a test for the interpreter
 #[cfg(test)]
-
 mod tests {
+    use combine::Parser;
     
-    use combine::EasyParser;
-
     use super::*;
 
     #[test]
-    fn test_apply_actions_to_images() {
-        // create some test images using the parsers test prompt
-        //let input: &str = r#"where metadata field "Type" is "Landscape"{ change color to "blue" }"#;
-        //let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
-
-        let input = r#"where metadata field "Type" is "Landscape" and metadata field "Author" is "John Doe" { change color to "blue" add overlay file: "logo.png" }"#;
-        let result = image_metadata().easy_parse(input);
-        // use the result to test the apply_actions_to_images function
-        let mut images = vec![result.unwrap().0];
-        let fields = vec![("Type".to_string(), "Landscape".to_string()), ("Author".to_string(), "John Doe".to_string())];
-        let actions = vec![("ChangeColor".to_string(), "blue".to_string()), ("AddOverlay".to_string(), "logo.png".to_string())];
-        apply_actions_to_images(&mut images, &fields, &actions);
-        assert_eq!(images[0].color, "blue");
-        assert_eq!(images[0].overlays[0], "logo.png");
-        
+    fn test_interpreter() {
+        let mut interpreter = Interpreter::new();
+        let metadata = image_metadata().parse(r#"where metadata field "Type" is "Landscape"{ change color to "blue" }"#).unwrap().0;
+        interpreter.interpret(metadata);
+        // I dont like seeing FIELD:TYPE, need to figure out a hashmap structure for comparison operators and the such
+        assert_eq!(interpreter.state.get("FIELD:TYPE"), Some(&"Landscape".to_string()));
+       
     }
 }
-*/

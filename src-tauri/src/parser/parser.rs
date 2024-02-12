@@ -24,22 +24,22 @@ pub enum Expression {
 }
 
 #[derive(Debug, PartialEq)]
-enum MetadataField {
+pub enum MetadataField {
     Type(String, String ),
     Author(String, String),
     Other(String, String)
 }
 
 #[derive(Debug, PartialEq)]
-enum Action {
+pub enum Action {
     ChangeColor(String),
     AddOverlay(String),
 }
 
 #[derive(Debug, PartialEq)]
 pub struct ImageMetadata {
-    fields: Vec<MetadataField>,
-    actions: Vec<Action>,
+    pub fields: Vec<MetadataField>,
+    pub actions: Vec<Action>,
 }
 
 fn comparison_operator<Input>() -> impl Parser<Input, Output = ComparisonOperator>
@@ -130,9 +130,18 @@ where
         string_literal(),
     )
     .map(|(_, key, _, value)| MetadataField::Author(key ,value));
-
-
-    choice((type_parser, author_parser))
+    
+    let date_parser = (
+        attempt(string::<Input>("metadata field ")),
+        integer_literal(),
+        string::<Input>(" is "),
+        comparison_operator(),
+        integer_literal(),
+    )
+    .map(|(_, key, _, op, value)| MetadataField::Other(key.to_string(), value.to_string()));
+// Big note to self: need a way of numerically comparing dates, i'll probably need to create a new date literal for this 
+//(and some comparison operators for it)
+    choice((type_parser, author_parser, date_parser))
 }
 
 pub fn image_metadata<Input>() -> impl Parser<Input, Output = ImageMetadata>
@@ -184,7 +193,7 @@ mod test_parser {
     
 
     use super::*;
-
+// Under current design, language will have to be really basic one liners, which for the time being is fine, I'll set up the parser to go line by line.
     #[test]
     fn test() {
         let input: &str = r#"where metadata field "Type" is "Landscape"{ change color to "blue" }"#;
