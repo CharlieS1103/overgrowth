@@ -160,14 +160,15 @@ where
     .map(|(_, key, _, value)| MetadataField::Author(key.to_string() ,value));
     
     let date_parser = (
-        attempt(string::<Input>("metadata field ")),
-        string("Date"),
+        attempt(string("metadata field ")),
+        string("Date "),
+        date_literal(),
         comparison_operator(),
         date_literal(),
     )
-    .map(|(_, key, comparison_op, value)| MetadataField::Other(key.to_string(), value.to_string()));
+    .map(|(_, key, value,comparison_op, comp_value)| MetadataField::Other(key.to_string(), value.to_string()));
 
-    choice((type_parser, author_parser, date_parser))
+    choice((attempt(date_parser), attempt(author_parser), attempt(type_parser)))
 }
 
 pub fn image_metadata<Input>() -> impl Parser<Input, Output = ImageMetadata>
@@ -221,16 +222,25 @@ mod test_parser {
     use super::*;
 // Under current design, language will have to be really basic one liners, which for the time being is fine,
 // I'll set up the parser to go line by line.
+
     #[test]
-    fn test() {
+    fn type_test() {
         let input: &str = r#"where metadata field Type is "Landscape"{ change color to "blue" }"#;
+        let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn author_test(){
+        let input: &str = r#"where metadata field Author is "John Doe"{ change color to "blue" }"#;
         let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
         println!("{:?}", result);
         assert!(result.is_ok());
     }
     #[test]
     fn date_test() {
-        let input: &str = r#"where metadata field Date is 2/3/2005{ change color to "blue" }"#;
+        let input: &str = r#"where metadata field Date 2/3/2005 = 2/3/2005{ change color to "blue" }"#;
         let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
         println!("{:?}", result);
         assert!(result.is_ok());
