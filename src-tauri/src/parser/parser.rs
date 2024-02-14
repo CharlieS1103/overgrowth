@@ -7,7 +7,7 @@ use combine::{attempt, choice, many1, skip_many, EasyParser, Parser};
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 
 #[derive(Debug, PartialEq)]
-enum ComparisonOperator {
+pub enum ComparisonOperator {
     Equals,
     NotEquals,
     GreaterThan,
@@ -28,6 +28,7 @@ pub enum Expression {
 pub enum MetadataField {
     Type(String, String ),
     Author(String, String),
+    Date(String, i64, ComparisonOperator, i64),
     Other(String, String)
 }
 
@@ -147,7 +148,6 @@ where
     )
     .map(|(month, _, day, _, year)| {
         let date = format!("{}/{}/{}", month, day, year);
-        println!("{}", date);
         let date_time = NaiveDate::parse_from_str(&date, "%m/%d/%Y").unwrap();
         let now = Utc::now().naive_utc().date();
         let duration = date_time.signed_duration_since(now);
@@ -155,8 +155,15 @@ where
     });
 
     let duration_parser = integer_literal().map(|i| i);
+    // convert keyword "NOW" to a duration
+    let now_parser = string("NOW").map(|_| {
+        let now = Utc::now().naive_utc().date();
+        let duration = now.signed_duration_since(now);
+        duration.num_days()
+    });
+
     // Given duration is in days from now, we should be able to then use comparison operators on dates
-    choice((date_parser, duration_parser))
+    choice((date_parser, duration_parser, now_parser))
    
 }
 
@@ -195,12 +202,13 @@ where
 
     let date_parser = (
         attempt(string("metadata field ")),
-        string("Date "),
+        string("Date"),
+        space(),
         date_literal(),
         comparison_operator(),
         date_literal(),
     )
-    .map(|(_,key,value,op,value2,)| MetadataField::Other(key.to_string(), format!("({},{:?}, {})", value,op, value2)));
+    .map(|(_,key,_,value,op,value2,)| MetadataField::Date(key.to_string(), value,op, value2));
 
     choice((attempt(date_parser), attempt(author_parser), attempt(type_parser)))
 }
@@ -278,5 +286,19 @@ mod test_parser {
         let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
         println!("{:?}", result);
         assert!(result.is_ok());
+    }
+    #[test]
+    fn now_test() {
+        let input: &str = r#"where metadata field Date 12/23/2005 = NOW{ change color to "blue" }"#; // Obviously should = false
+        let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_all(){
+        type_test();
+        author_test();
+        date_test();
     }
 }
