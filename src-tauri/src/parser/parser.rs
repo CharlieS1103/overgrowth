@@ -3,8 +3,8 @@ use std::io::Read;
 
 use combine::parser::char::{char, digit, letter, space, string};
 use combine::stream::PointerOffset;
-use combine::{choice, many1, Parser, EasyParser, attempt};
-use chrono::{DateTime, Duration, Utc};
+use combine::{attempt, choice, many1, skip_many, EasyParser, Parser};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 
 #[derive(Debug, PartialEq)]
 enum ComparisonOperator {
@@ -47,13 +47,46 @@ fn comparison_operator<Input>() -> impl Parser<Input, Output = ComparisonOperato
 where
     Input: combine::Stream<Token = char>,
 {
+    //Fix up this chatmonstered code at some point
     choice((
-        char('=').with(char('=')).map(|_| ComparisonOperator::Equals),
-        char('!').with(char('=')).map(|_| ComparisonOperator::NotEquals),
-        char('>').map(|_| ComparisonOperator::GreaterThan),
-        char('<').map(|_| ComparisonOperator::LessThan),
-        char('>').with(char('=')).map(|_| ComparisonOperator::GreaterThanOrEqual),
-        char('<').with(char('=')).map(|_| ComparisonOperator::LessThanOrEqual),
+        // Equals
+        skip_many(space())
+            .with(char('='))
+            .skip(skip_many(space()))
+            .map(|_| ComparisonOperator::Equals),
+
+        // Not equals
+        skip_many(space())
+            .with(char('!'))
+            .with(char('='))
+            .skip(skip_many(space()))
+            .map(|_| ComparisonOperator::NotEquals),
+
+        // Greater than
+        skip_many(space())
+            .with(char('>'))
+            .skip(skip_many(space()))
+            .map(|_| ComparisonOperator::GreaterThan),
+
+        // Less than
+        skip_many(space())
+            .with(char('<'))
+            .skip(skip_many(space()))
+            .map(|_| ComparisonOperator::LessThan),
+
+        // Greater than or equal
+        skip_many(space())
+            .with(char('>'))
+            .with(char('='))
+            .skip(skip_many(space()))
+            .map(|_| ComparisonOperator::GreaterThanOrEqual),
+
+        // Less than or equal
+        skip_many(space())
+            .with(char('<'))
+            .with(char('='))
+            .skip(skip_many(space()))
+            .map(|_| ComparisonOperator::LessThanOrEqual),
     ))
 }
 
@@ -114,8 +147,9 @@ where
     )
     .map(|(month, _, day, _, year)| {
         let date = format!("{}/{}/{}", month, day, year);
-        let date_time = DateTime::parse_from_str(&date, "%m/%d/%Y").unwrap();
-        let now = Utc::now();
+        println!("{}", date);
+        let date_time = NaiveDate::parse_from_str(&date, "%m/%d/%Y").unwrap();
+        let now = Utc::now().naive_utc().date();
         let duration = date_time.signed_duration_since(now);
         duration.num_days()
     });
@@ -158,7 +192,7 @@ where
         string_literal(),
     )
     .map(|(_, key, _, value)| MetadataField::Author(key.to_string() ,value));
-    
+
     let date_parser = (
         attempt(string("metadata field ")),
         string("Date "),
@@ -166,7 +200,7 @@ where
         comparison_operator(),
         date_literal(),
     )
-    .map(|(_, key, value,comparison_op, comp_value)| MetadataField::Other(key.to_string(), value.to_string()));
+    .map(|(_,key,value,op,value2,)| MetadataField::Other(key.to_string(), format!("({},{:?}, {})", value,op, value2)));
 
     choice((attempt(date_parser), attempt(author_parser), attempt(type_parser)))
 }
@@ -240,7 +274,7 @@ mod test_parser {
     }
     #[test]
     fn date_test() {
-        let input: &str = r#"where metadata field Date 2/3/2005 = 2/3/2005{ change color to "blue" }"#;
+        let input: &str = r#"where metadata field Date 12/23/2005 = 12/23/2005{ change color to "blue" }"#;
         let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
         println!("{:?}", result);
         assert!(result.is_ok());
