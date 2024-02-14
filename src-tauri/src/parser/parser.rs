@@ -4,6 +4,7 @@ use std::io::Read;
 use combine::parser::char::{char, digit, letter, space, string};
 use combine::stream::PointerOffset;
 use combine::{choice, many1, Parser, EasyParser, attempt};
+use chrono::{DateTime, Duration, Utc};
 
 #[derive(Debug, PartialEq)]
 enum ComparisonOperator {
@@ -99,6 +100,33 @@ where
     })
 }
 
+pub fn date_literal<Input>() -> impl Parser<Input, Output = i64>
+where
+    Input: combine::Stream<Token = char>,
+{
+  
+    let date_parser = (
+        integer_literal(),
+        char('/'),
+        integer_literal(),
+        char('/'),
+        integer_literal(),
+    )
+    .map(|(month, _, day, _, year)| {
+        let date = format!("{}/{}/{}", month, day, year);
+        let date_time = DateTime::parse_from_str(&date, "%m/%d/%Y").unwrap();
+        let now = Utc::now();
+        let duration = date_time.signed_duration_since(now);
+        duration.num_days()
+    });
+
+    let duration_parser = integer_literal().map(|i| i);
+    // Given duration is in days from now, we should be able to then use comparison operators on dates
+    choice((date_parser, duration_parser))
+   
+}
+
+
 fn expression<Input>() -> impl Parser<Input, Output = Expression>
 where
     Input: combine::Stream<Token = char>,
@@ -117,30 +145,28 @@ where
 {
     let type_parser = (
         attempt(string("metadata field ")),
-        string_literal(),
+        string("Type"),
         string(" is "),
         string_literal(),
     )
-    .map(|(_, key, _, value)| MetadataField::Type(key,value));
+    .map(|(_, key, _, value)| MetadataField::Type(key.to_string(),value));
 
     let author_parser = (
         attempt(string("metadata field ")),
-        string_literal(),
+        string("Author"),
         string(" is "),
         string_literal(),
     )
-    .map(|(_, key, _, value)| MetadataField::Author(key ,value));
+    .map(|(_, key, _, value)| MetadataField::Author(key.to_string() ,value));
     
     let date_parser = (
         attempt(string::<Input>("metadata field ")),
-        integer_literal(),
-        string::<Input>(" is "),
+        string("Date"),
         comparison_operator(),
-        integer_literal(),
+        date_literal(),
     )
-    .map(|(_, key, _, op, value)| MetadataField::Other(key.to_string(), value.to_string()));
-// Big note to self: need a way of numerically comparing dates, i'll probably need to create a new date literal for this 
-//(and some comparison operators for it)
+    .map(|(_, key, comparison_op, value)| MetadataField::Other(key.to_string(), value.to_string()));
+
     choice((type_parser, author_parser, date_parser))
 }
 
@@ -193,10 +219,18 @@ mod test_parser {
     
 
     use super::*;
-// Under current design, language will have to be really basic one liners, which for the time being is fine, I'll set up the parser to go line by line.
+// Under current design, language will have to be really basic one liners, which for the time being is fine,
+// I'll set up the parser to go line by line.
     #[test]
     fn test() {
-        let input: &str = r#"where metadata field "Type" is "Landscape"{ change color to "blue" }"#;
+        let input: &str = r#"where metadata field Type is "Landscape"{ change color to "blue" }"#;
+        let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
+    #[test]
+    fn date_test() {
+        let input: &str = r#"where metadata field Date is 2/3/2005{ change color to "blue" }"#;
         let result: Result<(ImageMetadata, &str), combine::easy::Errors<char, &str, PointerOffset<str>>> = image_metadata().easy_parse(input);
         println!("{:?}", result);
         assert!(result.is_ok());
