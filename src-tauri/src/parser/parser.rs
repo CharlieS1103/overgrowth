@@ -294,11 +294,13 @@ mod test_parser {
         println!("{:?}", result);
         assert!(result.is_ok());
     }
+// Note: currently it uses any date compared to another, need to make it so it can compare with the actual date of metadata within the image
 
     #[test]
     fn test_all(){
         type_test();
         author_test();
         date_test();
+        now_test();
     }
 }
