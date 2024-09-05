@@ -1,11 +1,12 @@
 mod app_structs;
 mod config;
 mod parser;
-use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{BufReader, Read, BufWriter}};
+use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{BufReader, Read, BufWriter, Cursor},};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
 use parser::parser::{parse, load_file, ImageMetadata};
 //use parser::interpreter::{apply_actions_to_images};
+use plist::Value;
 
 
 fn main() {
@@ -140,39 +141,44 @@ fn mac_logic(){
 Need to begin writing an interpreter for the scripts which will take the fields and actions from the parsed script and execute them
 */
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
-fn mac_store_icns_files(mac_apps :&Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
+fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
   let config = parse_config(&get_home_dir().unwrap());
   let home_dir = get_home_dir().unwrap();
   for app in mac_apps {
-    let icns = &app.icns;
-    // TODO: Should probably make icon_dir a PathBuf instead of a String from the start, but for now this works.
-    let icn_path = &config.icon_dir;
-    // icn_path (default): ./overgrowth/icons
+      // Retrieve the icon file name for the app
+      let icon_file_name = match get_icon_file_name(&app.path.to_string_lossy()) {
+          Ok(name) => name,
+          Err(e) => {
+              eprintln!("Error retrieving icon file name for {}: {}", app.path.display(), e);
+              continue;
+          }
+      };
 
-      // Convert icn_path into a PathBuf
-    let icn_path = PathBuf::from(icn_path);
-    let full_icon_path = home_dir.join(&icn_path);
-    // full_icon_path (default): /Users/{username}/.overgrowth/icons
-       if !&full_icon_path.exists() {
-        fs::create_dir_all(&full_icon_path)?;
+      let icn_path = &config.icon_dir;
+      let icn_path = PathBuf::from(icn_path);
+      let full_icon_path = home_dir.join(&icn_path);
+
+      if !&full_icon_path.exists() {
+          fs::create_dir_all(&full_icon_path)?;
       }
-    for icn in icns {
-      // Check to see if the file already exists in the configs icon dir
-      let app_icon_dir = &full_icon_path.join(app.path.with_extension("").file_name().unwrap());
-      // app_icon_dir (default): Users/{username}/.overgrowth/icons/{app name}/
-      //Convert icn to a PathBuf
-      let icn = &PathBuf::from(icn);
-      // Check if the app icon dir exists and if it doesn't create it
-      if !app_icon_dir.exists() {
-        fs::create_dir_all(app_icon_dir)?;
+
+      for icn in &app.icns {
+          let icn = PathBuf::from(icn);
+          // Only process the icon file that matches the retrieved icon file name
+          if icn.file_stem().unwrap().to_string_lossy() != icon_file_name {
+              continue;
+          }
+
+          let app_icon_dir = &full_icon_path.join(app.path.with_extension("").file_name().unwrap());
+
+          if !app_icon_dir.exists() {
+              fs::create_dir_all(app_icon_dir)?;
+          }
+
+          if !app_icon_dir.join(&icn.file_name().unwrap()).exists() {
+              fs::copy(home_dir.join(&icn), app_icon_dir.join(&icn.file_name().unwrap()))?;
+          }
       }
-      if !app_icon_dir.join(&icn.file_name().unwrap()).exists() {
-        // If it doesn't exist, copy the file to the configs icon dir
-        // Check if there is another .app file in the icn path, if so, create a new directory for the app
-        fs::copy(home_dir.join(icn), app_icon_dir.join(&icn.file_name().unwrap()))?;
-        
-      }
-    }
   }
   Ok(())
 }
@@ -196,6 +202,30 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app icns")))
   }
 }
+
+// Input an app diretory and it should retrieve the name of the .icns file used by the app via checking the info.plist
+
+
+fn get_icon_file_name(app_dir: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let plist_path = Path::new(app_dir).join("Contents").join("Info.plist");
+
+    let mut file = File::open(plist_path)?;
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents)?;
+    
+    let cursor = Cursor::new(contents);
+    let plist = Value::from_reader(cursor)?;
+
+    if let Value::Dictionary(dict) = plist {
+        if let Some(Value::String(icon_file_name)) = dict.get("CFBundleIconFile") {
+            return Ok(icon_file_name.clone());
+        }
+    }
+
+    Err("Icon file name not found in Info.plist".into())
+}
+
+
 
 // What i need to do for parsing
 // 1. Provide a folder in the app settings directory for the embedded scripts
