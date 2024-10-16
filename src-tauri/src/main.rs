@@ -1,8 +1,10 @@
 mod app_structs;
 mod config;
-use std::{any::Any, error::Error, fs::{self, read_dir, File}, io::{BufReader, BufWriter, Cursor, Read}, path::{Path, PathBuf}};
+mod parser;
+use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{BufReader, Read, BufWriter, Cursor},};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
 use config::{parse_config, generate_config};
+use parser::parser::{parse, load_file, ImageMetadata};
 //use parser::interpreter::{apply_actions_to_images};
 use plist::Value;
 
@@ -30,59 +32,44 @@ fn get_home_dir() -> Result < PathBuf, Box<dyn std::error::Error>> {
  * criteria: A closure that specifies the search criteria. It should take a `PathBuf` and return a `bool`.
  * check_sub_dir: Whether or not to check subdirectories.
  */
-
-
-// Input an app diretory and it should retrieve the name of the .icns file used by the app via checking the info.plist
-fn get_icon_file_path(app_dir: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    // Construct the path to the Info.plist file
-    let plist_path = Path::new(app_dir).join("Contents").join("Info.plist");
-
-    // Open the Info.plist file
-    let mut file = File::open(plist_path)?;
-    let mut contents = Vec::new();
-    file.read_to_end(&mut contents)?;
-
-    // Parse the Info.plist file
-    let plist = Value::from_reader(Cursor::new(&contents[..]))?;
-
-    // Retrieve the icon file name
-    if let Value::Dictionary(dict) = plist {
-        if let Some(Value::String(icon_file_name)) = dict.get("CFBundleIconFile") {
-            return Ok(PathBuf::from(icon_file_name));
-        }
-    }
-
-    Err("Icon file name not found in Info.plist".into())
-}
-// I need to set rework entire search logic, might be worth starting from scratch and using a different approach
 fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-    let mut matching_entries = Vec::new();
-
     // Read the directory entries
     let entries = fs::read_dir(dir_path)?;
 
-    for entry in entries {
-        let entry = entry?;
+    // Filter the entries that match the search criteria
+    let matching_entries = entries.filter_map(|entry| {
+        let entry = entry.ok()?;
         let path = entry.path();
+        if path.to_str().unwrap().ends_with(criteria){
+            Some(path)
+        } else {
+            None
+        }
+    });
 
-        // Check if the entry is a directory
-        if path.is_dir() {
-            // If check_sub_dir is true, recursively search subdirectories
-            if check_sub_dir {
-                let sub_dir_matches = search_directory(&path, criteria, check_sub_dir)?;
-                matching_entries.extend(sub_dir_matches);
-            }
+    // Convert the filtered entries into a vector of paths
+    let mut matching_paths: Vec<PathBuf> = matching_entries.collect();
+    // Print 
 
-            // Try to get the icon file name for the app directory
-            if let Ok(icon_file_path) = get_icon_file_path(path.to_str().unwrap()) {
-                if icon_file_path.exists() {
-                    matching_entries.push(icon_file_path);
+    if check_sub_dir {
+        // Recursively search the subdirectories
+        let subdirs = fs::read_dir(dir_path)?
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                let path = entry.path();
+                if path.is_dir() {
+                    Some(path)
+                } else {
+                    None
                 }
-            }
-        } 
-    }
+            });
 
-    Ok(matching_entries)
+        for subdir in subdirs {
+            let subdir_results = search_directory(&subdir, criteria, check_sub_dir)?;
+            matching_paths.extend(subdir_results);
+        }
+    }
+    Ok(matching_paths)
 }
 
 
@@ -108,26 +95,8 @@ fn mac_logic(){
    // Iterate through the vector of app files and get the MacApplication struct for each app
    let mut mac_apps: Vec<MacApplication> = Vec::new();
     for app_file in app_files {
-
-      let app = match get_mac_app_struct(app_file){
-        Ok(app) => app,
-        Err(e) => {
-          eprintln!("Error retrieving app struct for app");
-          
-
-          continue;
-        }
-      };
-
-      if app.type_id() == std::any::TypeId::of::<MacApplication>() {
-        println!("Successfully retrieved app struct");
-        mac_apps.push(app);
-      }
-      else{
-        println!("Error retrieving app struct for app: {}", app.name);
-      }
-
-      
+      let app = get_mac_app_struct(app_file).unwrap();
+      mac_apps.push(app);
   }
   // Generate the config file
   
@@ -177,7 +146,7 @@ fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn st
   let home_dir = get_home_dir().unwrap();
   for app in mac_apps {
       // Retrieve the icon file name for the app
-      let icon_file_path = match get_icon_file_path(&app.path.to_string_lossy()) {
+      let icon_file_name = match get_icon_file_name(&app.path.to_string_lossy()) {
           Ok(name) => name,
           Err(e) => {
               eprintln!("Error retrieving icon file name for {}: {}", app.path.display(), e);
@@ -196,7 +165,7 @@ fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn st
       for icn in &app.icns {
           let icn = PathBuf::from(icn);
           // Only process the icon file that matches the retrieved icon file name
-          if icn.file_stem().unwrap() != icon_file_path {
+          if icn.file_stem().unwrap().to_string_lossy() != icon_file_name {
               continue;
           }
 
@@ -234,16 +203,29 @@ fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::err
   }
 }
 
+// Input an app diretory and it should retrieve the name of the .icns file used by the app via checking the info.plist
 
 
-// Need to read from the toml file and add vines to icns files depending on last time used
-fn add_vines_to_icns_mac() {
-  let toml_file = parse_toml_file(&get_home_dir().unwrap().join(".overgrowth/icon_states.toml")).unwrap();
-  for app in toml_file {
+fn get_icon_file_name(app_dir: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let plist_path = Path::new(app_dir).join("Contents").join("Info.plist");
+
+    let mut file = File::open(plist_path)?;
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents)?;
     
-  }
+    let cursor = Cursor::new(contents);
+    let plist = Value::from_reader(cursor)?;
 
+    if let Value::Dictionary(dict) = plist {
+        if let Some(Value::String(icon_file_name)) = dict.get("CFBundleIconFile") {
+            return Ok(icon_file_name.clone());
+        }
+    }
+
+    Err("Icon file name not found in Info.plist".into())
 }
+
+
 
 // What i need to do for parsing
 // 1. Provide a folder in the app settings directory for the embedded scripts
