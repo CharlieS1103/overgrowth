@@ -75,13 +75,7 @@ fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> 
 
 // Handle the MacOS logic
 fn mac_logic(){
-  // For now only look for .app files in the /Applications directory just for the sake of making development faster
-/*  TODO: Make this function not loop through the home directory and target directories which would typically house app files 
- * "{homedir}/Applications"
- * "{homedir}/Downloads" 
- * "{homedir}/Documents" 
- * "{homedir}/Desktop")
-*/
+
 // TODO: Rename home path to application path for clarity purposes
   let path = get_home_dir().unwrap().join("/Applications");
   // Check if the path.extension is none and if it is 
