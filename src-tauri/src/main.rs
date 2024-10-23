@@ -2,10 +2,8 @@ mod app_structs;
 mod config;
 mod parser;
 use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{BufReader, Read, BufWriter, Cursor},};
-use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file};
+use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file,};
 use config::{parse_config, generate_config};
-use parser::parser::{parse, load_file, ImageMetadata};
-//use parser::interpreter::{apply_actions_to_images};
 use plist::Value;
 
 
@@ -49,7 +47,7 @@ fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> 
 
     // Convert the filtered entries into a vector of paths
     let mut matching_paths: Vec<PathBuf> = matching_entries.collect();
-    // Print 
+
 
     if check_sub_dir {
         // Recursively search the subdirectories
@@ -77,13 +75,7 @@ fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> 
 
 // Handle the MacOS logic
 fn mac_logic(){
-  // For now only look for .app files in the /Applications directory just for the sake of making development faster
-/*  TODO: Make this function not loop through the home directory and target directories which would typically house app files 
- * "{homedir}/Applications"
- * "{homedir}/Downloads" 
- * "{homedir}/Documents" 
- * "{homedir}/Desktop")
-*/
+
 // TODO: Rename home path to application path for clarity purposes
   let path = get_home_dir().unwrap().join("/Applications");
   // Check if the path.extension is none and if it is 
@@ -95,8 +87,13 @@ fn mac_logic(){
    // Iterate through the vector of app files and get the MacApplication struct for each app
    let mut mac_apps: Vec<MacApplication> = Vec::new();
     for app_file in app_files {
-      let app = get_mac_app_struct(app_file).unwrap();
-      mac_apps.push(app);
+      let app = get_mac_app_struct(app_file.clone());
+      if app.is_err() {
+          continue;
+      }
+      else{
+        mac_apps.push(app.unwrap());
+      }
   }
   // Generate the config file
   
@@ -108,16 +105,11 @@ fn mac_logic(){
     Ok(_) => println!("Successfully generated toml file"),
     Err(e) => println!("Error generating toml file: {}", e),
   }
- // PArse the toml file and set it to a variable 
-  let toml_file = parse_toml_file(&get_home_dir().unwrap().join(".overgrowth/icon_states.toml")).unwrap();
-  // Loop through the MacApplication Vec and print the name of each app
-  for app in &toml_file {
-    println!("Name: {}", app.name);
-  }
-
 
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
+  }else{
+    println!("Error storing icns files: {}", mac_store_icns_files(&mac_apps).err().unwrap());
   }
 }
 
@@ -141,62 +133,60 @@ fn mac_logic(){
 Need to begin writing an interpreter for the scripts which will take the fields and actions from the parsed script and execute them
 */
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
-fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn std::error::Error>> {
+fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
   let config = parse_config(&get_home_dir().unwrap());
-  let home_dir = get_home_dir().unwrap();
-  for app in mac_apps {
-      // Retrieve the icon file name for the app
-      let icon_file_name = match get_icon_file_name(&app.path.to_string_lossy()) {
-          Ok(name) => name,
-          Err(e) => {
-              eprintln!("Error retrieving icon file name for {}: {}", app.path.display(), e);
-              continue;
-          }
-      };
+    let home_dir = get_home_dir().unwrap();
+    
+    for app in mac_apps {
+        // Retrieve the icon file name for the app
+        let icon_file_name = match get_icon_file_name(&app.path.to_string_lossy()) {
+            Ok(name) => name,
+            Err(e) => {
+                eprintln!("Error retrieving icon file name for {}: {}", app.path.display(), e);
+                continue;
+            }
+        };
+        
+        let full_icon_path = home_dir.join(PathBuf::from(&config.icon_dir));
 
-      let icn_path = &config.icon_dir;
-      let icn_path = PathBuf::from(icn_path);
-      let full_icon_path = home_dir.join(&icn_path);
+        if !&full_icon_path.exists() {
+            fs::create_dir_all(&full_icon_path)?;
+        }
 
-      if !&full_icon_path.exists() {
-          fs::create_dir_all(&full_icon_path)?;
-      }
+                let icn = PathBuf::from(app.icns.clone());
+                // Only process the icon file that matches the retrieved icon file name
+                if icn.file_stem().unwrap().to_string_lossy() + ".icns" == icon_file_name {
+                    let app_icon_dir = app.path.join(&full_icon_path.join(app.path.with_extension("").file_name().unwrap()));
+                    if !app_icon_dir.exists() {
+                        fs::create_dir_all(app_icon_dir.clone())?;
+                    }
 
-      for icn in &app.icns {
-          let icn = PathBuf::from(icn);
-          // Only process the icon file that matches the retrieved icon file name
-          if icn.file_stem().unwrap().to_string_lossy() != icon_file_name {
-              continue;
-          }
-
-          let app_icon_dir = &full_icon_path.join(app.path.with_extension("").file_name().unwrap());
-
-          if !app_icon_dir.exists() {
-              fs::create_dir_all(app_icon_dir)?;
-          }
-
-          if !app_icon_dir.join(&icn.file_name().unwrap()).exists() {
-              fs::copy(home_dir.join(&icn), app_icon_dir.join(&icn.file_name().unwrap()))?;
-          }
-      }
-  }
-  Ok(())
+                    let icon_path = app_icon_dir.join(&icn);
+                    if !icon_path.exists() {
+                        fs::copy(home_dir.join(app.icn_path.clone()), icon_path)?;
+                    }
+            }
+    }
+    
+    Ok(())
 }
-
 /*  This function will return a MacApplication object which contains the name of the application, the path to the application, and the path to all the icons for the application
   * Parameters:
   *  app_path: The path to the application
   */
 fn get_mac_app_struct(path : PathBuf) -> Result<MacApplication, Box<dyn std::error::Error>> {
-  const EXTENSION_TYPE: &str = "icns";
-  let app_icns: Result<Vec<PathBuf>, Box<dyn Error>> = search_directory(&path, EXTENSION_TYPE, true);
-  // Convert app+icons from PathBuf to String
+  let app_icns = get_icon_file_name(&path.to_string_lossy())?;
 
-  let app_name : String = (&path.file_name().unwrap().to_str().unwrap()).to_string();
-  if app_icns.is_ok() {
-    let app_icns: Vec<String> = app_icns.unwrap().iter().map(|x| x.to_str().unwrap().to_string()).collect();
-   
-    Ok(MacApplication{path : (&path).to_owned(), icns : app_icns, name: (app_name).to_string()})
+  // Convert app+icons from PathBuf to String
+  let app_name = path.file_name().unwrap().to_str().unwrap();
+  // Use the icon file name and app name to recursively search for the icns files in the app directory of that name to return the full path to icns and store
+  let app_icn_path = search_directory(&path, &app_icns, true).unwrap();
+  if app_icn_path.len() == 0 {
+    return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app icns path")))
+  }
+  let full_app_icn_path = app_icn_path[0].clone();
+  if !app_icns.is_empty() {
+    Ok(MacApplication{path : (&path).to_owned(), icns : app_icns, name: (app_name).to_string(), icn_path: full_app_icn_path})
   }
   else {
     Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Could not get app icns")))
@@ -218,6 +208,11 @@ fn get_icon_file_name(app_dir: &str) -> Result<String, Box<dyn std::error::Error
 
     if let Value::Dictionary(dict) = plist {
         if let Some(Value::String(icon_file_name)) = dict.get("CFBundleIconFile") {
+          // if value is AppIcon add .icns to the end because for whatever reason plist does not include the extension for the default name :( 
+          // or i guess if it doesn't have .icns at the end add it too because favicon is one of those values too ??
+          if !icon_file_name.contains(".icns") {
+            return Ok(icon_file_name.clone() + ".icns");
+          }
             return Ok(icon_file_name.clone());
         }
     }
