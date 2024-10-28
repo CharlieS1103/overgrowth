@@ -91,6 +91,10 @@ fn mac_logic(){
       if app.is_err() {
           continue;
       }
+      else if app_file.display().to_string().split(".app").collect::<Vec<&str>>().len() > 2 {
+        // This should in all hopes remove any apps which contain additional helper apps inside the directory
+        continue;
+      }
       else{
         mac_apps.push(app.unwrap());
       }
