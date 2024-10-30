@@ -1,10 +1,12 @@
 mod app_structs;
 mod config;
 mod parser;
+mod utils;
 use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{BufReader, Read, BufWriter, Cursor},};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file,};
 use config::{parse_config, generate_config};
 use plist::Value;
+use utils::image_handling::icns_conversion::{convert_icns_to_png, /*convert_pngs_to_icns*/};
 
 
 fn main() {
@@ -91,6 +93,10 @@ fn mac_logic(){
       if app.is_err() {
           continue;
       }
+      else if app_file.display().to_string().split(".app").collect::<Vec<&str>>().len() > 2 {
+        // This should in all hopes remove any apps which contain additional helper apps inside the directory
+        continue;
+      }
       else{
         mac_apps.push(app.unwrap());
       }
@@ -111,6 +117,7 @@ fn mac_logic(){
   }else{
     println!("Error storing icns files: {}", mac_store_icns_files(&mac_apps).err().unwrap());
   }
+  // Store the icns files for each app as a png file in the icons directory as well
 }
 
 /* 
@@ -220,6 +227,32 @@ fn get_icon_file_name(app_dir: &str) -> Result<String, Box<dyn std::error::Error
     Err("Icon file name not found in Info.plist".into())
 }
 
+// If a user wants to uninstall overgrowth we should use the backed up icns files in the specified directory to restore the icons to their original state
+fn uninstall_overgrowth() -> Result<(), Box<dyn Error>> {
+  // THIS FUNCTION IS SUPER SCARY TO TEST!! TODO: WRITE UNIT TESTS FOR THIS FUNCTION
+  let config = parse_config(&get_home_dir().unwrap());
+  let home_dir = get_home_dir().unwrap();
+  let icon_dir = home_dir.join(PathBuf::from(&config.icon_dir));
+  let app_dir = home_dir.join("Applications");
+
+  for entry in read_dir(icon_dir)? {
+    let entry = entry?;
+    let path = entry.path();
+    let file_name = path.file_name().unwrap().to_str().unwrap();
+    let app_name = file_name.split(".icns").collect::<Vec<&str>>()[0];
+    let app_path = app_dir.join(app_name);
+    let app_icon_path = app_path.join(file_name);
+    let original_icon_path = path;
+
+    if app_icon_path.exists() {
+      fs::remove_file(app_icon_path.clone())?;
+    }
+
+    fs::copy(original_icon_path, app_icon_path)?;
+  }
+
+  Ok(())
+}
 
 
 // What i need to do for parsing

@@ -1,9 +1,9 @@
-use icns::{IconFamily, IconType};
+use icns::{IconFamily, IconType, Image};
 use image::{io::Reader as ImageReader, ImageBuffer};
 use std::{error::Error, fs::{self, File}, io::BufReader, path::PathBuf};
 
 
-fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     // Read the icns file
     let file = BufReader::new(File::open(icns_path)?);
     let icon_family = IconFamily::read(file)?;
@@ -31,8 +31,8 @@ fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
 }
 
 
-
-fn convert_pngs_to_icns(png_dir: &PathBuf, icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+/* 
+pub fn convert_pngs_to_icns(png_dir: &PathBuf, icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     // Create a new icon family
     let mut icon_family = IconFamily::new();
 
@@ -45,13 +45,29 @@ fn convert_pngs_to_icns(png_dir: &PathBuf, icns_path: &PathBuf) -> Result<(), Bo
         let file = BufReader::new(File::open(&path)?);
         let image = ImageReader::new(file).decode()?;
 
-        // Get the icon type from the file name
         let icon_type = match path.file_name().unwrap().to_str().unwrap() {
-            "icon_16x16.png" => IconType::Icon16x16,
+            "RGB24_16x16.png" => IconType::RGB24_16x16,
+            "Mask8_16x16.png" => IconType::Mask8_16x16,
+            "RGB24_32x32.png" => IconType::RGB24_32x32,
+            "Mask8_32x32.png" => IconType::Mask8_32x32,
+            "RGB24_48x48.png" => IconType::RGB24_48x48,
+            "Mask8_48x48.png" => IconType::Mask8_48x48,
+            "RGB24_128x128.png" => IconType::RGB24_128x128,
+            "Mask8_128x128.png" => IconType::Mask8_128x128,
+            "RGBA32_16x16.png" => IconType::RGBA32_16x16,
+            "RGBA32_16x16_2x.png" => IconType::RGBA32_16x16_2x,
+            "RGBA32_32x32.png" => IconType::RGBA32_32x32,
+            "RGBA32_32x32_2x.png" => IconType::RGBA32_32x32_2x,
+            "RGBA32_64x64.png" => IconType::RGBA32_64x64,
+            "RGBA32_128x128.png" => IconType::RGBA32_128x128,
+            "RGBA32_128x128_2x.png" => IconType::RGBA32_128x128_2x,
+            "RGBA32_256x256.png" => IconType::RGBA32_256x256,
+            "RGBA32_256x256_2x.png" => IconType::RGBA32_256x256_2x,
+            "RGBA32_512x512.png" => IconType::RGBA32_512x512,
+            "RGBA32_512x512_2x.png" => IconType::RGBA32_512x512_2x,
             _ => continue,
         };
 
-        // Add the icon to the icon family
         icon_family.add_icon_with_type(&image.to_rgba(), icon_type)?;
     }
 
@@ -61,5 +77,5 @@ fn convert_pngs_to_icns(png_dir: &PathBuf, icns_path: &PathBuf) -> Result<(), Bo
 
     Ok(())
 }
-      
+      */
  
