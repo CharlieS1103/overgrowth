@@ -138,7 +138,7 @@ pub fn date_literal<Input>() -> impl Parser<Input, Output = i64>
 where
     Input: combine::Stream<Token = char>,
 {
-  
+  // Need to rewrite date parser to allow app.date and app.last_opened to be compared to the a literal
     let date_parser = (
         integer_literal(),
         char('/'),
@@ -295,6 +295,10 @@ mod test_parser {
         assert!(result.is_ok());
     }
 // Note: currently it uses any date compared to another, need to make it so it can compare with the actual date of metadata within the image
+    fn and_test() {
+        let input : &str = r#"where metadata field Date 12/23/2005 = Now AND metadata field Type is "Landscape"{ change color to "blue" }"#;
+        // note this won't currently function, need to implement AND operator
+    }   
 
     #[test]
     fn test_all(){

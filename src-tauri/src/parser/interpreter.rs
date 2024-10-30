@@ -1,5 +1,7 @@
 use icns::Image;
 
+use crate::app_structs::mac_app::MacApplication;
+
 use super::parser::image_metadata;
 use super::parser::ImageMetadata;
 use super::parser::MetadataField;
@@ -16,98 +18,107 @@ impl Interpreter {
             state: std::collections::HashMap::new(),
         }
     }
-
-    pub fn interpret(&mut self, metadata: ImageMetadata) {
-        for field in metadata.fields {
-            
-            match field {
-                MetadataField::Type(mut key, value) => {
-                    key = "FIELD:".to_owned() + &key.to_uppercase();
-                    println!("Setting type {} to {}", key, value);
-                    self.state.insert(key, value);
-                }
-                MetadataField::Author(mut key, value) => {
-                    key =  "FIELD:".to_owned() + &key.to_uppercase();
-                    println!("Setting author {} to {}", key, value);
-                    self.state.insert(key, value);
-                }
-                MetadataField::Date(mut key, value, op, value2) => {
-                    key =  "FIELD:".to_owned() + &key.to_uppercase();
-                    // Compare the dates, store key and true/false in state
-                    // print op
-                    println!("Operation: {:?}", op);
-                    match op 
-                    {
-                        Equal => {
-                            if value == value2 {
-                                self.state.insert(key, "true".to_string());
-                                
-
-                            } else {
-                                self.state.insert(key, "false".to_string());
-                            }
-                            
+    // This needs to determine which apps pass comparisons and which do not and then apply the actions to the ones that do
+    pub fn interpret(&mut self, mac_apps: Vec<MacApplication>, metadata: ImageMetadata) {
+        for app in mac_apps {
+            let mut pass = true;
+            for field in metadata.fields.iter() {
+                match field {
+                    MetadataField::Type(t,_) => {
+                        if app.app_type != *t {
+                            pass = false;
                         }
-                        LessThan => {
-                            if value < value2 {
-                                self.state.insert(key, "true".to_string());
-                            } else {
-                                self.state.insert(key, "false".to_string());
-                            }
-                        }
-                        GreaterThan => {
-                            if value > value2 {
-                                self.state.insert(key, "true".to_string());
-                            } else {
-                                self.state.insert(key, "false".to_string());
-                            }
-                        }
-                        LessThanOrEqual => {
-                            if value <= value2 {
-                                self.state.insert(key, "true".to_string());
-                            } else {
-                                self.state.insert(key, "false".to_string());
-                            }
-                        }
-                        GreaterThanOrEqual => {
-                            if value >= value2 {
-                                self.state.insert(key, "true".to_string());
-                            } else {
-                                self.state.insert(key, "false".to_string());
-                            }
-                        }
-                        NotEquals => {
-                            if value != value2 {
-                                self.state.insert(key, "true".to_string());
-                            } else {
-                                self.state.insert(key, "false".to_string());
-                            }
-                        }
-                        
                     }
-                    
-                }
-                MetadataField::Other(mut key, value) => {
-                    key =  "FIELD:".to_owned() + &key.to_uppercase();
-                    println!("Setting other {} to {}", key, value);
-                    self.state.insert(key, value);
+                    MetadataField::Date(d,_) => {
+                        if app.date != *d {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Size(s,_) => {
+                        if app.size != *s {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Name(n,_) => {
+                        if app.name != *n {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Version(v,_) => {
+                        if app.version != *v {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Author(a, _) => {
+                        if app.author != *a {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Description(d) => {
+                        if app.description != *d {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Rating(r) => {
+                        if app.rating != *r {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Price(p) => {
+                        if app.price != *p {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Popularity(p) => {
+                        if app.popularity != *p {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Downloads(d) => {
+                        if app.downloads != *d {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Category(c) => {
+                        if app.category != *c {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Tags(t) => {
+                        if app.tags != *t {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Keywords(k) => {
+                        if app.keywords != *k {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::License(l) => {
+                        if app.license != *l {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Website(w) => {
+                        if app.website != *w {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Source(s) => {
+                        if app.source != *s {
+                            pass = false;
+                        }
+                    }
+                    MetadataField::Language(l) => {
+                        if app.language != *l {
+                            pass = false;
+                        }
+                    }
                 }
             }
-        }
-
-        for action in metadata.actions {
-            match action {
-                Action::ChangeColor(color) => {
-                    println!("Changing color to {}", color);
-                }
-                Action::AddOverlay(overlay) => {
-                    println!("Adding overlay {}", overlay);
-                }
-            }
-        }
         }
     }
-
+}
 
 
 #[cfg(test)]
@@ -120,9 +131,8 @@ mod tests {
     fn test_basic() {
         let mut interpreter = Interpreter::new();
         let metadata = parse(r#"where metadata field Type is "Landscape"{ change color to "blue" }"#).unwrap().0;
-        interpreter.interpret(metadata);
-        // I dont like seeing FIELD:TYPE, need to figure out a hashmap structure for comparison operators and the such
-        assert_eq!(interpreter.state.get("FIELD:TYPE"), Some(&"Landscape".to_string()));
+        interpreter.interpret(vec![], metadata);
+        
        
     }
     #[test]
@@ -133,3 +143,4 @@ mod tests {
         assert_eq!(interpreter.state.get("FIELD:DATE"), Some(&"true".to_string()));
     }
 }
+
