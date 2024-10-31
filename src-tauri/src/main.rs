@@ -2,15 +2,17 @@ mod app_structs;
 mod config;
 mod parser;
 mod utils;
-use std::{path::{PathBuf, Path}, error::Error, fs::{self, File, read_dir}, io::{BufReader, Read, BufWriter, Cursor},};
-use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file, icon_states::parse_toml_file,};
+use std::{error::Error, fs::{self, read_dir, File}, io::{BufReader, BufWriter, Cursor, Read}, path::{Path, PathBuf}, thread};
+use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
 use config::{parse_config, generate_config};
 use plist::Value;
 use utils::image_handling::icns_conversion::{convert_icns_to_png, /*convert_pngs_to_icns*/};
 
 
 fn main() {
+  thread::spawn(|| {
   mac_logic();
+  });
   tauri::Builder::default()
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
