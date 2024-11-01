@@ -37,31 +37,3 @@ pub fn generate_toml_file(home_dir : &PathBuf, apps : &Vec<MacApplication>) -> R
     Ok(())
 }
 
-
-pub fn parse_toml_file(file_path: &PathBuf) -> Result<Vec<MacApplication>, Box<dyn Error>> {
-    let contents = fs::read_to_string(file_path)?;
-    println!("{:?}", contents);
-    let mac_apps: HashMap<String, Vec<MacApplication>> = toml::from_str(&contents)?;
-    let mac_apps = mac_apps.get("apps");
-    let mut apps = Vec::new();
-    match mac_apps {
-        Some(apps_ref) => {
-            for app in apps_ref {
-                let path = &app.path;
-                let name = &app.name;
-                let icns = &app.icns;
-                let icn_path = &app.icn_path;
-                apps.push(MacApplication {
-                    path: path.clone(),
-                    name: name.clone(),
-                    icns: icns.clone(),
-                    icn_path: icn_path.clone(),
-                })
-            }
-        },
-        None => {
-            println!("No apps found in toml file");
-        }
-    }
-    Ok(apps)
-}
