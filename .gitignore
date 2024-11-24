@@ -23,3 +23,6 @@ yarn-debug.log*
 yarn-error.log*
 yarn.lock
 src-tauri/Cargo.lock
+src-tauri/Cargo.lock
+yarn.lock
+*.lock
