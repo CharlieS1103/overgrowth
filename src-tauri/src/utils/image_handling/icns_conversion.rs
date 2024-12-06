@@ -3,19 +3,19 @@ use image::{io::Reader as ImageReader, ImageBuffer};
 use std::{error::Error, fs::{self, File}, io::BufReader, path::PathBuf};
 
 
-pub fn convert_icns_to_png(icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub fn convert_icns_to_png(icns_path: PathBuf, icns_dir_path : PathBuf) -> Result<(), Box<dyn Error>> {
     // Read the icns file
     let file = BufReader::new(File::open(icns_path)?);
     let icon_family = IconFamily::read(file)?;
 
-    // Create a directory based on the icn file name
-    let png_dir = icns_path.with_file_name(icns_path.file_name().unwrap());
-    fs::create_dir_all(&png_dir)?;
 
+    let png_dir = icns_dir_path.join("png");
+    fs::create_dir_all(&png_dir)?;
+    println!("{}", png_dir.display());
     // Loop through all the available icon types and convert them to png files
     for icon in icon_family.available_icons() {
         let image = match icon_family.get_icon_with_type(icon) {
-            Ok(img) => img,
+            Ok(img) => img, 
             Err(_) => continue,
         };
 

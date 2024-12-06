@@ -6,6 +6,7 @@ use std::{error::Error, fs::{self, read_dir, File}, io::{BufReader, BufWriter, C
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
 use config::{parse_config, generate_config};
 use plist::Value;
+use utils::utils::uninstall_overgrowth;
 use utils::image_handling::icns_conversion::{convert_icns_to_png, /*convert_pngs_to_icns*/};
 
 
@@ -123,10 +124,6 @@ fn mac_logic(){
 }
 
 /* 
-
-
-
-
   fn load_scripts() -> Result<Vec<String>, std::io::Error> {
     let script_dir = get_home_dir().unwrap().join(".overgrowth/scripts");
     let mut scripts = Vec::new();
@@ -141,6 +138,8 @@ fn mac_logic(){
 }
 Need to begin writing an interpreter for the scripts which will take the fields and actions from the parsed script and execute them
 */
+
+
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
 fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
   let config = parse_config(&get_home_dir().unwrap());
@@ -174,6 +173,7 @@ fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Er
                     if !icon_path.exists() {
                         fs::copy(home_dir.join(app.icn_path.clone()), icon_path)?;
                     }
+                   let _ = convert_icns_to_png(app_icon_dir.join(&icn),app_icon_dir );
             }
     }
     
@@ -229,52 +229,18 @@ fn get_icon_file_name(app_dir: &str) -> Result<String, Box<dyn std::error::Error
     Err("Icon file name not found in Info.plist".into())
 }
 
-// If a user wants to uninstall overgrowth we should use the backed up icns files in the specified directory to restore the icons to their original state
-fn uninstall_overgrowth() -> Result<(), Box<dyn Error>> {
-  // THIS FUNCTION IS SUPER SCARY TO TEST!! TODO: WRITE UNIT TESTS FOR THIS FUNCTION
-  let config = parse_config(&get_home_dir().unwrap());
-  let home_dir = get_home_dir().unwrap();
-  let icon_dir = home_dir.join(PathBuf::from(&config.icon_dir));
-  let app_dir = home_dir.join("Applications");
+// TODO: Change variable names around for overgrowth clones to have a c underscore prefix just so i can understand the code a tad easier
+// Also need to add examples of what each variable looks like just so i can understand my own code
 
-  for entry in read_dir(icon_dir)? {
-    let entry = entry?;
-    let path = entry.path();
-    let file_name = path.file_name().unwrap().to_str().unwrap();
-    let app_name = file_name.split(".icns").collect::<Vec<&str>>()[0];
-    let app_path = app_dir.join(app_name);
-    let app_icon_path = app_path.join(file_name);
-    let original_icon_path = path;
 
-    if app_icon_path.exists() {
-      fs::remove_file(app_icon_path.clone())?;
-    }
 
-    fs::copy(original_icon_path, app_icon_path)?;
-  }
-
-  Ok(())
-}
 
 
 // What i need to do for parsing
-// 1. Provide a folder in the app settings directory for the embedded scripts
-// 2. Load the embedded scripts 
 // 3. Parse the embedded scripts
 // 4. Execute the parsed code 
 
 
 
 
-
-
-// 1. Get the home directory of the current user
-// 2. Search the home directory for .app files
-// 3. For each .app file, get the name of the app, the path to the app, and the path to the icns files for the app
-// 4. Store the icns files in the configs icon directory
-// 5. Generate the toml file
-// 6. Parse the toml file
-// 7. For each app in the toml file, get the name of the app, the path to the app, and the path to the icns files for the app
 // 8. For each app in the toml file, loop through the icns files and change the icon of the app to the current icns file
-// 9. Restart the dock
-// 10. Clear the dock cache
