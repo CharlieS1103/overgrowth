@@ -26,3 +26,5 @@ src-tauri/Cargo.lock
 src-tauri/Cargo.lock
 yarn.lock
 *.lock
+.VSCodeCounter/2025-01-24_13-33-05/results.md
+/.VSCodeCounter

@@ -1,5 +1,5 @@
 use icns::{IconFamily, IconType, Image};
-use image::{io::Reader as ImageReader, ImageBuffer};
+use image::{io::Reader as ImageReader/*, ImageBuffer*/};
 use std::{error::Error, fs::{self, File}, io::BufReader, path::PathBuf};
 
 
@@ -31,7 +31,7 @@ pub fn convert_icns_to_png(icns_path: PathBuf, icns_dir_path : PathBuf) -> Resul
 }
 
 
-/* 
+
 pub fn convert_pngs_to_icns(png_dir: &PathBuf, icns_path: &PathBuf) -> Result<(), Box<dyn Error>> {
     // Create a new icon family
     let mut icon_family = IconFamily::new();
@@ -68,7 +68,9 @@ pub fn convert_pngs_to_icns(png_dir: &PathBuf, icns_path: &PathBuf) -> Result<()
             _ => continue,
         };
 
-        icon_family.add_icon_with_type(&image.to_rgba(), icon_type)?;
+        let rgba_image = image.to_rgba8();
+        let image = Image::from_data(icns::PixelFormat::RGBA, rgba_image.width(), rgba_image.height(), rgba_image.into_raw())?;
+        icon_family.add_icon_with_type(&image, icon_type)?;
     }
 
     // Write the icns file
@@ -77,5 +79,5 @@ pub fn convert_pngs_to_icns(png_dir: &PathBuf, icns_path: &PathBuf) -> Result<()
 
     Ok(())
 }
-      */
+
  

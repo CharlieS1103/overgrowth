@@ -2,17 +2,20 @@ mod app_structs;
 mod config;
 mod parser;
 mod utils;
-use std::{error::Error, fs::{self, read_dir, File}, io::{BufReader, BufWriter, Cursor, Read}, path::{Path, PathBuf}, thread};
+use std::{error::Error, fs::{self, /*read_dir,*/ File}, io::{/*BufReader, BufWriter,*/ Cursor, Read}, path::{Path, PathBuf}, thread};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
 use config::{parse_config, generate_config};
 use plist::Value;
-use utils::utils::uninstall_overgrowth;
+use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba, GenericImage, Pixel};
+// use utils::utils::uninstall_overgrowth;
 use utils::image_handling::icns_conversion::{convert_icns_to_png, /*convert_pngs_to_icns*/};
+use utils::image_handling::add_overlay::add_overlay;
 
 
 fn main() {
   thread::spawn(|| {
   mac_logic();
+  
   });
   tauri::Builder::default()
     .run(tauri::generate_context!())
@@ -117,12 +120,81 @@ fn mac_logic(){
 
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
+    if vine_demo(&mac_apps).is_ok() {
+      println!("Successfully added vine overlays");
+  } else {
+      println!("Error adding vine overlays");
+  }
   }else{
     println!("Error storing icns files: {}", mac_store_icns_files(&mac_apps).err().unwrap());
   }
+  // Lets add a demo with just adding vine overlay to all the apps depending on last time they were modified and see if it works
+  // Start by adding vines to the pngs 
+  
+  
+  // Convert pngs to icns and replace the app icon with it
+  // Ensure the original icon is stored in the icons directory (for use as a backup)
   // Store the icns files for each app as a png file in the icons directory as well
 }
 
+
+fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
+    let home_dir = get_home_dir().unwrap();
+    let config = parse_config(&home_dir);
+    let icon_dir = home_dir.join(&config.icon_dir);
+
+    // Load vine assets
+    let vine_assets = load_vine_assets(&home_dir.join(".overgrowth/assets"))?;
+
+    for app in mac_apps {
+        let app_icon_dir = icon_dir.join(app.path.with_extension("").file_name().unwrap());
+        // print the app icon dir
+        println!("{}", app_icon_dir.display());
+        let png_files = search_directory(&app_icon_dir, "png", false)?;
+
+        for png_file in png_files {
+            let metadata = fs::metadata(&png_file)?;
+            let last_modified = metadata.modified()?;
+
+            // Check if the app has not been used recently (e.g., within the last 30 days)
+            let duration_since_modified = last_modified.elapsed()?;
+            if duration_since_modified.as_secs() > 30 * 24 * 60 * 60 {
+                let mut image = image::open(&png_file)?;
+
+                // Overlay vines on the image
+                for vine in &vine_assets {
+                  //print asset path
+            
+                    image = add_overlay(image, vine);
+                }
+
+                // Save the modified image
+                image.save(&png_file)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn load_vine_assets(assets_dir: &PathBuf) -> Result<Vec<DynamicImage>, Box<dyn Error>> {
+    let mut vine_assets = Vec::new();
+    for entry in fs::read_dir(assets_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().unwrap() == "png" {
+          // print asset path
+          println!("Adding {}", path.display());
+            let vine = image::open(&path)?;
+            vine_assets.push(vine);
+        }
+    }
+    Ok(vine_assets)
+}
+fn overlay_vine(mut image: DynamicImage, vine: &DynamicImage) -> Result<DynamicImage, Box<dyn Error>> {
+    image = add_overlay(image, vine);
+    Ok(image)
+}
 /* 
   fn load_scripts() -> Result<Vec<String>, std::io::Error> {
     let script_dir = get_home_dir().unwrap().join(".overgrowth/scripts");
@@ -143,7 +215,7 @@ Need to begin writing an interpreter for the scripts which will take the fields 
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
 fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
   let config = parse_config(&get_home_dir().unwrap());
-    let home_dir = get_home_dir().unwrap();
+  let home_dir = get_home_dir().unwrap();
     
     for app in mac_apps {
         // Retrieve the icon file name for the app
@@ -228,6 +300,9 @@ fn get_icon_file_name(app_dir: &str) -> Result<String, Box<dyn std::error::Error
 
     Err("Icon file name not found in Info.plist".into())
 }
+
+
+
 
 // TODO: Change variable names around for overgrowth clones to have a c underscore prefix just so i can understand the code a tad easier
 // Also need to add examples of what each variable looks like just so i can understand my own code
