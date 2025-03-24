@@ -155,6 +155,8 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
         for png_file in png_files {
             let metadata = fs::metadata(&png_file)?;
             let last_modified = metadata.modified()?;
+            // print the png file name
+            println!("{}: {:?}", png_file.display(), last_modified);
 
             // Check if the app has not been used recently (e.g., within the last 30 days)
             let duration_since_modified = last_modified.elapsed()?;
@@ -190,10 +192,6 @@ fn load_vine_assets(assets_dir: &PathBuf) -> Result<Vec<DynamicImage>, Box<dyn E
         }
     }
     Ok(vine_assets)
-}
-fn overlay_vine(mut image: DynamicImage, vine: &DynamicImage) -> Result<DynamicImage, Box<dyn Error>> {
-    image = add_overlay(image, vine);
-    Ok(image)
 }
 /* 
   fn load_scripts() -> Result<Vec<String>, std::io::Error> {

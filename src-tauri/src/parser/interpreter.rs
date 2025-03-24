@@ -1,4 +1,4 @@
-use icns::Image;
+/* use icns::Image;
 
 use crate::app_structs::mac_app::MacApplication;
 
@@ -144,3 +144,5 @@ mod tests {
     }
 }
 
+
+*/
