@@ -123,14 +123,13 @@ fn mac_logic(){
     if vine_demo(&mac_apps).is_ok() {
       println!("Successfully added vine overlays");
   } else {
-      println!("Error adding vine overlays");
+      println!( "Error adding vine overlays: {}", vine_demo(&mac_apps).err().unwrap());
   }
   }else{
     println!("Error storing icns files: {}", mac_store_icns_files(&mac_apps).err().unwrap());
   }
   // Lets add a demo with just adding vine overlay to all the apps depending on last time they were modified and see if it works
   // Start by adding vines to the pngs 
-  
   
   // Convert pngs to icns and replace the app icon with it
   // Ensure the original icon is stored in the icons directory (for use as a backup)
@@ -157,7 +156,6 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
             let last_modified = metadata.modified()?;
             // print the png file name
             println!("{}: {:?}", png_file.display(), last_modified);
-
             // Check if the app has not been used recently (e.g., within the last 30 days)
             let duration_since_modified = last_modified.elapsed()?;
             if duration_since_modified.as_secs() > 30 * 24 * 60 * 60 {
