@@ -147,15 +147,13 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
 
     for app in mac_apps {
         let app_icon_dir = icon_dir.join(app.path.with_extension("").file_name().unwrap());
-        // print the app icon dir
-        println!("{}", app_icon_dir.display());
-        let png_files = search_directory(&app_icon_dir, "png", false)?;
+        let png_files = search_directory(&app_icon_dir, ".png", true)?;
 
         for png_file in png_files {
+          // print the png file path
+            println!("Processing: {}", png_file.display());
             let metadata = fs::metadata(&png_file)?;
             let last_modified = metadata.modified()?;
-            // print the png file name
-            println!("{}: {:?}", png_file.display(), last_modified);
             // Check if the app has not been used recently (e.g., within the last 30 days)
             let duration_since_modified = last_modified.elapsed()?;
             if duration_since_modified.as_secs() > 30 * 24 * 60 * 60 {
@@ -167,7 +165,6 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
             
                     image = add_overlay(image, vine);
                 }
-
                 // Save the modified image
                 image.save(&png_file)?;
             }
@@ -179,9 +176,15 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
 
 fn load_vine_assets(assets_dir: &PathBuf) -> Result<Vec<DynamicImage>, Box<dyn Error>> {
     let mut vine_assets = Vec::new();
+    println!("Loading vine assets from {}", assets_dir.display());
     for entry in fs::read_dir(assets_dir)? {
         let entry = entry?;
+        println!("Entry: {}", entry.path().display());
         let path = entry.path();
+        // if entry is ds_store, skip it
+        if path.file_name().unwrap() == ".DS_Store" {
+            continue;
+        }
         if path.extension().unwrap() == "png" {
           // print asset path
           println!("Adding {}", path.display());
