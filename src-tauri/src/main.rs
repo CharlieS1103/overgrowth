@@ -148,27 +148,25 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
     for app in mac_apps {
         let app_icon_dir = icon_dir.join(app.path.with_extension("").file_name().unwrap());
         let png_files = search_directory(&app_icon_dir, ".png", true)?;
+        // check if the app has been used in the last 30 days
+        let metadata = fs::metadata(&app.path)?;
+        let modified_time = metadata.modified()?;
+        let now = std::time::SystemTime::now();
+        let duration = now.duration_since(modified_time)?;
+        let days = duration.as_secs() / 86400;
+        if days > 30 {
+          for png_file in png_files {
+            let mut image = image::open(&png_file)?;
 
-        for png_file in png_files {
-          // print the png file path
-            println!("Processing: {}", png_file.display());
-            let metadata = fs::metadata(&png_file)?;
-            let last_modified = metadata.modified()?;
-            // Check if the app has not been used recently (e.g., within the last 30 days)
-            let duration_since_modified = last_modified.elapsed()?;
-            if duration_since_modified.as_secs() > 30 * 24 * 60 * 60 {
-                let mut image = image::open(&png_file)?;
-
-                // Overlay vines on the image
-                for vine in &vine_assets {
-                  //print asset path
-            
-                    image = add_overlay(image, vine);
-                }
-                // Save the modified image
-                image.save(&png_file)?;
+            for vine in &vine_assets {
+                image = add_overlay(image, vine);
             }
+            // Save the modified image
+            image.save(&png_file)?;
+
+    }
         }
+
     }
 
     Ok(())
