@@ -15,7 +15,6 @@ use utils::image_handling::add_overlay::add_overlay;
 fn main() {
   thread::spawn(|| {
   mac_logic();
-  
   });
   tauri::Builder::default()
     .run(tauri::generate_context!())
