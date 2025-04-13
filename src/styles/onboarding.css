@@ -1,15 +1,4 @@
-:root{
-    --bg-primary: #2B4141;
-    --txt-primary: #E4E4E4;
-    --bg-secondary: #3b5b47;
-    --txt-secondary: #5b5959;
-    background-color: var(--bg-primary);
-    color: var(--txt-primary);
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 1.2rem;
-    margin: 0;
-    padding: 0;
-}
+import 
 section {
     margin: 2rem 0;
 }
@@ -30,19 +19,60 @@ footer {
     font-size: 0.9rem;
 }
 
-.get-started-btn {
-    display: inline-block;
-    margin-top: 1rem;
-    padding: 0.5rem 1rem;
-    background-color: var(--btn-primary-bg, #62A87C);
-    color: var(--btn-primary-txt, #fff);
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    text-align: center;
+
+.navigation-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2rem;
+    gap: 1rem;
 }
 
-.get-started-btn:hover {
-    background-color: var(--btn-primary-hover-bg, #62a87c6b);
+.arrow {
+    background: none;
+    border: none;
+    color: #0078d4;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.arrow:disabled {
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+.dots {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    background-color: #ccc;
+    border-radius: 50%;
+}
+
+.dot.active {
+    background-color: #0078d4;
+}
+
+.open-app-btn {
+    display: block;
+    margin: 2rem auto 0;
+    padding: 0.8rem 1.5rem;
+    font-size: 1.2rem;
+    color: var(--txt-primary);
+    background-color: var(--bg-secondary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.open-app-btn:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.open-app-btn:active {
+    transform: scale(0.95);
 }

@@ -1,0 +1,48 @@
+:root{
+    --bg-primary: #2B4141;
+    --txt-primary: #E4E4E4;
+    --bg-secondary: #3b5b47;
+    --txt-secondary: #5b5959;
+    background-color: var(--bg-primary);
+    color: var(--txt-primary);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.2rem;
+    margin: 0;
+    padding: 0;
+}
+.navigation-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2rem;
+    gap: 1rem;
+}
+
+.arrow {
+    background: none;
+    border: none;
+    color: #0078d4;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.arrow:disabled {
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+.dots {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    background-color: #ccc;
+    border-radius: 50%;
+}
+
+.dot.active {
+    background-color: #0078d4;
+}
