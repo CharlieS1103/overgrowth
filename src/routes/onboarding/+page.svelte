@@ -93,6 +93,4 @@
 <style>
     @import "../../styles/onboarding.css";
     @import "../../styles/global.css";
-
-   
 </style>

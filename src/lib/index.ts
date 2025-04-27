@@ -1,6 +1,9 @@
 
 export const app = {
     init: async () => {
-        console.log("App initialized");
+        // Initialize the app
+        console.log('App initialized');
     }
+    // Need to make funcs to communicate with the rust side of the app
+    
 };

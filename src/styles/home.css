@@ -1,0 +1,59 @@
+:root {
+    --bg-primary: #2B4141;
+    --txt-primary: #E4E4E4;
+    --bg-secondary: #3b5b47;
+    --txt-secondary: #5b5959;
+    --bg-tertiary: #4a6b5a; /* New tertiary background color */
+    --bg-misc: #1c7023; /* New miscellaneous color for slider */
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background-color: var(--bg-secondary);
+    color: var(--txt-primary);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar h2 {
+    margin-bottom: 20px;
+}
+
+.menu-item {
+    margin: 10px 0;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.menu-item:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.menu-item a {
+    text-decoration: none;
+    color: var(--txt-primary);
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+    background-color: var(--bg-primary);
+    color: var(--txt-primary);
+}
+
+.feature {
+    margin-bottom: 20px;
+    padding: 20px;
+    background-color: var(--txt-primary);
+    color: var(--txt-secondary);
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

@@ -1,11 +1,20 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
-    import { app } from "$lib/index";
+    import { invoke } from "@tauri-apps/api/tauri";
+
+    const runMacLogic = async () => {
+        try {
+            await invoke("mac_logic");
+            console.log("Mac logic executed successfully!");
+        } catch (error) {
+            console.error("Error running mac logic:", error);
+        }
+    };
 
     onMount(() => {
         const init = async () => {
-            await app.init();
+            await runMacLogic(); // Call mac_logic on load
             setTimeout(() => {
                 goto("/onboarding");
             }, 5000); // Delay of 5 seconds

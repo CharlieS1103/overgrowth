@@ -1,4 +1,11 @@
-import 
+:root {
+    --bg-primary: #2B4141;
+    --txt-primary: #E4E4E4;
+    --bg-secondary: #3b5b47;
+    --txt-secondary: #5b5959;
+    --bg-tertiary: #4a6b5a; /* New tertiary background color */
+    --bg-misc: #1c7023; /* New miscellaneous color for slider */
+}
 section {
     margin: 2rem 0;
 }
@@ -31,7 +38,7 @@ footer {
 .arrow {
     background: none;
     border: none;
-    color: #0078d4;
+    color: var(--bg-misc);
     font-size: 1.5rem;
     cursor: pointer;
 }
@@ -54,7 +61,7 @@ footer {
 }
 
 .dot.active {
-    background-color: #0078d4;
+    background-color: var(--bg-misc);
 }
 
 .open-app-btn {

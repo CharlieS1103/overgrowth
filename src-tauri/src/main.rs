@@ -2,7 +2,7 @@ mod app_structs;
 mod config;
 mod parser;
 mod utils;
-use std::{error::Error, fs::{self, /*read_dir,*/ File}, io::{/*BufReader, BufWriter,*/ Cursor, Read}, path::{Path, PathBuf}, thread};
+use std::{error::Error, fs::{self, /*read_dir,*/ File}, io::{/*BufReader, BufWriter,*/ Cursor, Read}, path::{Path, PathBuf}};
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
 use config::{parse_config, generate_config};
 use plist::Value;
@@ -10,13 +10,11 @@ use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba, GenericImage, Pix
 // use utils::utils::uninstall_overgrowth;
 use utils::image_handling::icns_conversion::{convert_icns_to_png, /*convert_pngs_to_icns*/};
 use utils::image_handling::add_overlay::add_overlay;
-
+use tauri::command;
 
 fn main() {
-  thread::spawn(|| {
-  mac_logic();
-  });
   tauri::Builder::default()
+    .invoke_handler(tauri::generate_handler![mac_logic])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
@@ -81,6 +79,7 @@ fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> 
 // Mac Integrations: 
 
 // Handle the MacOS logic
+#[command]
 fn mac_logic(){
 
 // TODO: Rename home path to application path for clarity purposes
