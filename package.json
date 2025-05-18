@@ -15,14 +15,16 @@
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^4.0.0",
 		"@sveltejs/adapter-static": "^3.0.8",
-		"@sveltejs/kit": "^2.16.0",
+		"@sveltejs/kit": "^2.20.7",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tauri-apps/cli": "1",
+		"@types/better-sqlite3": "^7.6.13",
 		"@vitest/ui": "^3.1.1",
 		"jsdom": "^26.0.0",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
-		"typescript": "^5.0.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.8.2",
 		"vite": "^6.0.0",
 		"vitest": "^3.1.1"
 	},
@@ -30,5 +32,8 @@
 		"onlyBuiltDependencies": [
 			"esbuild"
 		]
+	},
+	"dependencies": {
+		"better-sqlite3": "^11.9.1"
 	}
 }

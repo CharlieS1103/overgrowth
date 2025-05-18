@@ -21,6 +21,7 @@
         displayedText = ""; // Clear the text
         let index = 0;
         clearInterval(typingInterval); // Clear any previous interval
+        // @ts-ignore
         typingInterval = setInterval(() => {
             if (index < text.length) {
                 displayedText += text[index];

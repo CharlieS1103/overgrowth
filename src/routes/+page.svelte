@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { invoke } from "@tauri-apps/api/tauri";
-
+    import { app } from "$lib/index"
     const runMacLogic = async () => {
         try {
             await invoke("mac_logic");
@@ -14,10 +14,10 @@
 
     onMount(() => {
         const init = async () => {
-            await runMacLogic(); // Call mac_logic on load
+            await app.init();
             setTimeout(() => {
                 goto("/onboarding");
-            }, 5000); // Delay of 5 seconds
+            }, 2000); // Delay of 5 seconds
         };
         init();
     });
