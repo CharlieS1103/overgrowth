@@ -6,15 +6,79 @@ use std::{error::Error, fs::{self, /*read_dir,*/ File}, io::{/*BufReader, BufWri
 use app_structs::{mac_app::MacApplication, icon_states::generate_toml_file};
 use config::{parse_config, generate_config};
 use plist::Value;
-use image::{DynamicImage, GenericImageView, ImageBuffer, Rgba, GenericImage, Pixel};
+use image::DynamicImage;
 // use utils::utils::uninstall_overgrowth;
 use utils::image_handling::icns_conversion::{convert_icns_to_png, /*convert_pngs_to_icns*/};
 use utils::image_handling::add_overlay::add_overlay;
 use tauri::command;
 
+/// Create a new script file
+#[command]
+fn create_script(name: String, content: String) -> Result<String, String> {
+    let home_dir = get_home_dir().map_err(|e| e.to_string())?;
+    let scripts_dir = home_dir.join(".overgrowth/scripts");
+    
+    // Ensure scripts directory exists
+    if !scripts_dir.exists() {
+        fs::create_dir_all(&scripts_dir).map_err(|e| e.to_string())?;
+    }
+    
+    let script_path = scripts_dir.join(format!("{}.ov", name));
+    fs::write(&script_path, content).map_err(|e| e.to_string())?;
+    
+    Ok(format!("Script '{}' created successfully", name))
+}
+
+/// List all available scripts
+#[command]
+fn list_scripts() -> Result<Vec<String>, String> {
+    let home_dir = get_home_dir().map_err(|e| e.to_string())?;
+    let scripts_dir = home_dir.join(".overgrowth/scripts");
+    
+    if !scripts_dir.exists() {
+        return Ok(vec![]);
+    }
+    
+    let mut scripts = Vec::new();
+    for entry in fs::read_dir(&scripts_dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        
+        if path.extension().map_or(false, |ext| ext == "ov") {
+            if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                scripts.push(name.to_string());
+            }
+        }
+    }
+    
+    Ok(scripts)
+}
+
+/// Get list of all applications
+#[command]
+fn get_apps() -> Result<Vec<MacApplication>, String> {
+    let applications_dir = get_home_dir().map_err(|e| e.to_string())?.join("/Applications");
+    let app_files = search_directory(&applications_dir, "app", true).map_err(|e| e.to_string())?;
+    
+    let mut mac_apps: Vec<MacApplication> = Vec::new();
+    for app_file in app_files {
+        match get_mac_app_struct(app_file.clone()) {
+            Ok(app) => {
+                // Filter out helper apps and duplicates
+                if !app_file.display().to_string().split(".app").collect::<Vec<&str>>().len() > 2 {
+                    mac_apps.push(app);
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+    
+    Ok(mac_apps)
+}
+
 fn main() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![mac_logic])
+    .invoke_handler(tauri::generate_handler![mac_logic, create_script, list_scripts, get_apps])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
@@ -82,14 +146,14 @@ fn search_directory(dir_path: &PathBuf, criteria: &str, check_sub_dir: bool) -> 
 #[command]
 fn mac_logic(){
 
-// TODO: Rename home path to application path for clarity purposes
-  let path = get_home_dir().unwrap().join("/Applications");
+// Applications directory path for scanning
+  let applications_dir = get_home_dir().unwrap().join("/Applications");
   // Check if the path.extension is none and if it is 
   const EXTENSION_TYPE: &str = "app";
   // Log path.extension().unwrap()
 
 
-  let app_files = search_directory(&path, EXTENSION_TYPE, true).unwrap();
+  let app_files = search_directory(&applications_dir, EXTENSION_TYPE, true).unwrap();
    // Iterate through the vector of app files and get the MacApplication struct for each app
    let mut mac_apps: Vec<MacApplication> = Vec::new();
     for app_file in app_files {
@@ -118,11 +182,20 @@ fn mac_logic(){
 
   if mac_store_icns_files(&mac_apps).is_ok() {
     println!("Successfully stored icns files");
-    if vine_demo(&mac_apps).is_ok() {
-      println!("Successfully added vine overlays");
-  } else {
-      println!( "Error adding vine overlays: {}", vine_demo(&mac_apps).err().unwrap());
-  }
+    
+    // Execute user scripts
+    if execute_scripts_on_apps(&mac_apps).is_ok() {
+      println!("Successfully executed user scripts");
+    } else {
+      println!("Error executing scripts: {}", execute_scripts_on_apps(&mac_apps).err().unwrap());
+    }
+    
+    // Run demo overlay (can be removed later)
+    if apply_overlay_demo(&mac_apps).is_ok() {
+      println!("Successfully added demo overlays");
+    } else {
+      println!( "Error adding demo overlays: {}", apply_overlay_demo(&mac_apps).err().unwrap());
+    }
   }else{
     println!("Error storing icns files: {}", mac_store_icns_files(&mac_apps).err().unwrap());
   }
@@ -135,13 +208,13 @@ fn mac_logic(){
 }
 
 
-fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
+fn apply_overlay_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
     let home_dir = get_home_dir().unwrap();
     let config = parse_config(&home_dir);
     let icon_dir = home_dir.join(&config.icon_dir);
 
-    // Load vine assets
-    let vine_assets = load_vine_assets(&home_dir.join(".overgrowth/assets"))?;
+    // Load overlay assets (PNG files from assets directory)
+    let overlay_assets = load_overlay_assets(&home_dir.join(".overgrowth/assets"))?;
 
     for app in mac_apps {
         let app_icon_dir = icon_dir.join(app.path.with_extension("").file_name().unwrap());
@@ -156,8 +229,8 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
           for png_file in png_files {
             let mut image = image::open(&png_file)?;
 
-            for vine in &vine_assets {
-                image = add_overlay(image, vine);
+            for overlay in &overlay_assets {
+                image = add_overlay(image, overlay);
             }
             // Save the modified image
             image.save(&png_file)?;
@@ -170,9 +243,9 @@ fn vine_demo(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_vine_assets(assets_dir: &PathBuf) -> Result<Vec<DynamicImage>, Box<dyn Error>> {
-    let mut vine_assets = Vec::new();
-    println!("Loading vine assets from {}", assets_dir.display());
+fn load_overlay_assets(assets_dir: &PathBuf) -> Result<Vec<DynamicImage>, Box<dyn Error>> {
+    let mut overlay_assets = Vec::new();
+    println!("Loading overlay assets from {}", assets_dir.display());
     for entry in fs::read_dir(assets_dir)? {
         let entry = entry?;
         println!("Entry: {}", entry.path().display());
@@ -184,27 +257,25 @@ fn load_vine_assets(assets_dir: &PathBuf) -> Result<Vec<DynamicImage>, Box<dyn E
         if path.extension().unwrap() == "png" {
           // print asset path
           println!("Adding {}", path.display());
-            let vine = image::open(&path)?;
-            vine_assets.push(vine);
+            let overlay_image = image::open(&path)?;
+            overlay_assets.push(overlay_image);
         }
     }
-    Ok(vine_assets)
+    Ok(overlay_assets)
 }
-/* 
-  fn load_scripts() -> Result<Vec<String>, std::io::Error> {
-    let script_dir = get_home_dir().unwrap().join(".overgrowth/scripts");
-    let mut scripts = Vec::new();
-    for entry in read_dir(script_dir)? {
-        let path = entry?.path();
-        if path.is_file() {
-            let contents = load_file(path.to_str().unwrap())?;
-            scripts.push(contents);
-        }
-    }
-    Ok(scripts)
+/// Load and execute all scripts on the given applications
+fn execute_scripts_on_apps(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Error>> {
+    use parser::interpreter::Interpreter;
+    
+    let home_dir = get_home_dir().unwrap();
+    let scripts_dir = home_dir.join(".overgrowth/scripts");
+    
+    let mut interpreter = Interpreter::new();
+    interpreter.load_and_execute_all_scripts(&scripts_dir, mac_apps)?;
+    
+    println!("Processed apps: {:?}", interpreter.processed_apps);
+    Ok(())
 }
-Need to begin writing an interpreter for the scripts which will take the fields and actions from the parsed script and execute them
-*/
 
 
 // Loop through the MacApplication Vec and store the icns files for each app in the Configs icns-dir
@@ -231,14 +302,14 @@ fn mac_store_icns_files(mac_apps: &Vec<MacApplication>) -> Result<(), Box<dyn Er
                 let icn = PathBuf::from(app.icns.clone());
                 // Only process the icon file that matches the retrieved icon file name
                 if icn.file_stem().unwrap().to_string_lossy() + ".icns" == icon_file_name {
-                    let app_icon_dir = app.path.join(&full_icon_path.join(app.path.with_extension("").file_name().unwrap()));
+                    let app_icon_dir = full_icon_path.join(app.path.with_extension("").file_name().unwrap());
                     if !app_icon_dir.exists() {
                         fs::create_dir_all(app_icon_dir.clone())?;
                     }
 
                     let icon_path = app_icon_dir.join(&icn);
                     if !icon_path.exists() {
-                        fs::copy(home_dir.join(app.icn_path.clone()), icon_path)?;
+                        fs::copy(&app.icn_path, icon_path)?;
                     }
                    let _ = convert_icns_to_png(app_icon_dir.join(&icn),app_icon_dir );
             }
@@ -314,3 +385,136 @@ fn get_icon_file_name(app_dir: &str) -> Result<String, Box<dyn std::error::Error
 
 
 // 8. For each app in the toml file, loop through the icns files and change the icon of the app to the current icns file
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use std::fs;
+
+    #[test]
+    fn test_get_home_dir_returns_path() {
+        let result = get_home_dir();
+        assert!(result.is_ok());
+        let home_path = result.unwrap();
+        assert!(home_path.is_absolute());
+    }
+
+    #[test]
+    fn test_search_directory_with_extension() {
+        let temp_dir = TempDir::new().unwrap();
+        let search_path = temp_dir.path().to_path_buf();
+        
+        // Create some test files
+        let test_app = search_path.join("TestApp.app");
+        fs::create_dir_all(&test_app).unwrap();
+        
+        let other_file = search_path.join("document.txt");
+        fs::write(&other_file, "test content").unwrap();
+        
+        let result = search_directory(&search_path, ".app", false);
+        assert!(result.is_ok());
+        
+        let found_files = result.unwrap();
+        assert_eq!(found_files.len(), 1);
+        assert!(found_files[0].to_string_lossy().contains("TestApp.app"));
+    }
+
+    #[test]
+    fn test_search_directory_recursive() {
+        let temp_dir = TempDir::new().unwrap();
+        let search_path = temp_dir.path().to_path_buf();
+        
+        // Create nested structure
+        let subdir = search_path.join("subdir");
+        fs::create_dir_all(&subdir).unwrap();
+        
+        let nested_app = subdir.join("NestedApp.app");
+        fs::create_dir_all(&nested_app).unwrap();
+        
+        let result = search_directory(&search_path, ".app", true);
+        assert!(result.is_ok());
+        
+        let found_files = result.unwrap();
+        assert_eq!(found_files.len(), 1);
+        assert!(found_files[0].to_string_lossy().contains("NestedApp.app"));
+    }
+
+    #[test]
+    fn test_get_icon_file_name_with_mock_plist() {
+        let temp_dir = TempDir::new().unwrap();
+        let app_path = temp_dir.path().join("TestApp.app");
+        let contents_path = app_path.join("Contents");
+        fs::create_dir_all(&contents_path).unwrap();
+        
+        let plist_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+</dict>
+</plist>"#;
+        
+        let plist_path = contents_path.join("Info.plist");
+        fs::write(&plist_path, plist_content).unwrap();
+        
+        let result = get_icon_file_name(&app_path.to_string_lossy());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "AppIcon.icns");
+    }
+
+    #[test]
+    fn test_get_icon_file_name_with_full_filename() {
+        let temp_dir = TempDir::new().unwrap();
+        let app_path = temp_dir.path().join("TestApp.app");
+        let contents_path = app_path.join("Contents");
+        fs::create_dir_all(&contents_path).unwrap();
+        
+        let plist_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIconFile</key>
+    <string>CustomIcon.icns</string>
+</dict>
+</plist>"#;
+        
+        let plist_path = contents_path.join("Info.plist");
+        fs::write(&plist_path, plist_content).unwrap();
+        
+        let result = get_icon_file_name(&app_path.to_string_lossy());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "CustomIcon.icns");
+    }
+
+    #[test]
+    fn test_load_overlay_assets_handles_empty_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let assets_path = temp_dir.path().to_path_buf();
+        fs::create_dir_all(&assets_path).unwrap();
+        
+        let result = load_overlay_assets(&assets_path);
+        assert!(result.is_ok());
+        
+        let assets = result.unwrap();
+        assert_eq!(assets.len(), 0);
+    }
+
+    #[test]  
+    fn test_load_overlay_assets_filters_ds_store() {
+        let temp_dir = TempDir::new().unwrap();
+        let assets_path = temp_dir.path().to_path_buf();
+        fs::create_dir_all(&assets_path).unwrap();
+        
+        // Create .DS_Store file
+        let ds_store_path = assets_path.join(".DS_Store");
+        fs::write(&ds_store_path, "dummy content").unwrap();
+        
+        let result = load_overlay_assets(&assets_path);
+        assert!(result.is_ok());
+        
+        let assets = result.unwrap();
+        assert_eq!(assets.len(), 0); // Should filter out .DS_Store
+    }
+}

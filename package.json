@@ -14,19 +14,19 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^4.0.0",
-		"@sveltejs/adapter-static": "^3.0.8",
-		"@sveltejs/kit": "^2.20.7",
-		"@sveltejs/vite-plugin-svelte": "^5.0.0",
-		"@tauri-apps/cli": "1",
+		"@sveltejs/adapter-static": "^3.0.9",
+		"@sveltejs/kit": "^2.42.2",
+		"@sveltejs/vite-plugin-svelte": "^5.1.1",
+		"@tauri-apps/cli": "^1.6.3",
 		"@types/better-sqlite3": "^7.6.13",
-		"@vitest/ui": "^3.1.1",
-		"jsdom": "^26.0.0",
-		"svelte": "^5.0.0",
-		"svelte-check": "^4.0.0",
+		"@vitest/ui": "^3.2.4",
+		"jsdom": "^26.1.0",
+		"svelte": "^5.39.2",
+		"svelte-check": "^4.3.1",
 		"ts-node": "^10.9.2",
-		"typescript": "^5.8.2",
-		"vite": "^6.0.0",
-		"vitest": "^3.1.1"
+		"typescript": "^5.9.2",
+		"vite": "^6.3.6",
+		"vitest": "^3.2.4"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
@@ -34,6 +34,6 @@
 		]
 	},
 	"dependencies": {
-		"better-sqlite3": "^11.9.1"
+		"better-sqlite3": "^11.10.0"
 	}
 }

@@ -37,3 +37,118 @@ pub fn generate_toml_file(home_dir : &PathBuf, apps : &Vec<MacApplication>) -> R
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use std::fs;
+
+    #[test]
+    fn test_generate_toml_file_creates_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let home_dir = temp_dir.path().to_path_buf();
+        
+        // Create .overgrowth directory
+        let overgrowth_dir = home_dir.join(".overgrowth");
+        fs::create_dir_all(&overgrowth_dir).unwrap();
+
+        let apps = vec![
+            MacApplication {
+                path: PathBuf::from("/Applications/TestApp1.app"),
+                name: "TestApp1.app".to_string(),
+                icns: "AppIcon.icns".to_string(),
+                icn_path: PathBuf::from("/Applications/TestApp1.app/Contents/Resources/AppIcon.icns"),
+            },
+            MacApplication {
+                path: PathBuf::from("/Applications/TestApp2.app"),
+                name: "TestApp2.app".to_string(),
+                icns: "Icon.icns".to_string(),
+                icn_path: PathBuf::from("/Applications/TestApp2.app/Contents/Resources/Icon.icns"),
+            }
+        ];
+
+        let result = generate_toml_file(&home_dir, &apps);
+        assert!(result.is_ok());
+
+        // Check if file was created
+        let toml_path = home_dir.join(".overgrowth/icon_states.toml");
+        assert!(toml_path.exists());
+
+        // Check file contents
+        let content = fs::read_to_string(&toml_path).unwrap();
+        assert!(content.contains("TestApp1.app"));
+        assert!(content.contains("TestApp2.app"));
+        assert!(content.contains("[[apps]]"));
+    }
+
+    #[test]
+    fn test_generate_toml_file_filters_helper_apps() {
+        let temp_dir = TempDir::new().unwrap();
+        let home_dir = temp_dir.path().to_path_buf();
+        
+        // Create .overgrowth directory
+        let overgrowth_dir = home_dir.join(".overgrowth");
+        fs::create_dir_all(&overgrowth_dir).unwrap();
+
+        let apps = vec![
+            MacApplication {
+                path: PathBuf::from("/Applications/TestApp.app"),
+                name: "TestApp.app".to_string(),
+                icns: "AppIcon.icns".to_string(),
+                icn_path: PathBuf::from("/Applications/TestApp.app/Contents/Resources/AppIcon.icns"),
+            },
+            MacApplication {
+                path: PathBuf::from("/Applications/Helper (App).app"),
+                name: "Helper (App).app".to_string(),
+                icns: "Helper.icns".to_string(),
+                icn_path: PathBuf::from("/Applications/Helper (App).app/Contents/Resources/Helper.icns"),
+            }
+        ];
+
+        let result = generate_toml_file(&home_dir, &apps);
+        assert!(result.is_ok());
+
+        let toml_path = home_dir.join(".overgrowth/icon_states.toml");
+        let content = fs::read_to_string(&toml_path).unwrap();
+        
+        // Should contain regular app but not helper app (with parentheses)
+        assert!(content.contains("TestApp.app"));
+        assert!(!content.contains("Helper (App).app"));
+    }
+
+    #[test]
+    fn test_generate_toml_file_filters_empty_icns() {
+        let temp_dir = TempDir::new().unwrap();
+        let home_dir = temp_dir.path().to_path_buf();
+        
+        // Create .overgrowth directory
+        let overgrowth_dir = home_dir.join(".overgrowth");
+        fs::create_dir_all(&overgrowth_dir).unwrap();
+
+        let apps = vec![
+            MacApplication {
+                path: PathBuf::from("/Applications/ValidApp.app"),
+                name: "ValidApp.app".to_string(),
+                icns: "AppIcon.icns".to_string(),
+                icn_path: PathBuf::from("/Applications/ValidApp.app/Contents/Resources/AppIcon.icns"),
+            },
+            MacApplication {
+                path: PathBuf::from("/Applications/InvalidApp.app"),
+                name: "InvalidApp.app".to_string(),
+                icns: "".to_string(), // Empty icns
+                icn_path: PathBuf::from("/Applications/InvalidApp.app/Contents/Resources/"),
+            }
+        ];
+
+        let result = generate_toml_file(&home_dir, &apps);
+        assert!(result.is_ok());
+
+        let toml_path = home_dir.join(".overgrowth/icon_states.toml");
+        let content = fs::read_to_string(&toml_path).unwrap();
+        
+        // Should contain valid app but not invalid app (with empty icns)
+        assert!(content.contains("ValidApp.app"));
+        assert!(!content.contains("InvalidApp.app"));
+    }
+}
+
